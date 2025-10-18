@@ -1,0 +1,21 @@
+name: saas_new
+description: A new Flutter project.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.18.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_fonts: ^6.1.0
+  supabase_flutter: ^2.10.2
+  flutter_math_fork: ^0.7.2  # ✅ ADDED FOR LATEX RENDERING
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo.png
+    - assets/
