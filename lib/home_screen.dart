@@ -560,8 +560,9 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
       return DateTime(date.year, date.month, 1);
     }).reversed.toList();
 
-    double boxSize = 12; // Ideal small square
-    double gap = 5; // Spacing like GitHub/LeetCode
+    const double boxSize = 10;
+    const double gap = 2;
+    const int gridCols = 7; // Show as standard week (Sun-Sat) per row
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -573,38 +574,35 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: months.map((monthStart) {
             final daysInMonth =
                 DateUtils.getDaysInMonth(monthStart.year, monthStart.month);
-            final cols = (daysInMonth <= 14)
-                ? 7
-                : 8; // 7-8 column grid feels good visually for most months!
-            final rows = (daysInMonth / cols).ceil();
-            List<Widget> dayBoxes = [];
 
+            // prepare day-boxes in rows
+            List<Widget> squares = [];
             for (int i = 0; i < daysInMonth; i++) {
               final day = DateTime(monthStart.year, monthStart.month, i + 1);
               final count = widget.activityMap[day] ?? 0;
               final color = getPurpleShade(count);
               final isHovered = hoveredDate == day;
-
-              dayBoxes.add(
+              squares.add(
                 MouseRegion(
                   onEnter: (_) => setState(() => hoveredDate = day),
                   onExit: (_) => setState(() => hoveredDate = null),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 140),
+                    duration: const Duration(milliseconds: 120),
                     width: boxSize,
                     height: boxSize,
+                    margin: EdgeInsets.all(gap / 2),
                     decoration: BoxDecoration(
                       color: color,
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(2),
                       boxShadow: isHovered && count > 0
                           ? [
                               BoxShadow(
                                 color: color.withOpacity(0.7),
-                                blurRadius: 5,
+                                blurRadius: 6,
                                 spreadRadius: 1,
                               ),
                             ]
@@ -613,12 +611,11 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
                         color: isHovered
                             ? const Color(0xFFc084fc)
                             : const Color(0xFF161b22),
-                        width: isHovered ? 1.2 : 0.5,
+                        width: isHovered ? 1.1 : 0.7,
                       ),
                     ),
-                    margin: EdgeInsets.all(gap / 2),
                     transform: isHovered
-                        ? (Matrix4.identity()..scale(1.18))
+                        ? (Matrix4.identity()..scale(1.2))
                         : Matrix4.identity(),
                     child: isHovered && count > 0
                         ? Tooltip(
@@ -639,28 +636,30 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
               );
             }
 
-            // To keep grid aligned fill the last row with spacers if needed
-            int fillers = rows * cols - daysInMonth;
+            // add blanks to fill incomplete last row (7 columns)
+            int fillers = (gridCols - (daysInMonth % gridCols)) % gridCols;
             for (int i = 0; i < fillers; i++) {
-              dayBoxes.add(Container(
+              squares.add(Container(
                   width: boxSize,
                   height: boxSize,
                   margin: EdgeInsets.all(gap / 2)));
             }
 
+            int numRows = (squares.length / gridCols).ceil();
+
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 9),
               child: Column(
                 children: [
                   SizedBox(
-                    width: cols * (boxSize + gap),
-                    height: rows * (boxSize + gap),
+                    width: gridCols * (boxSize + gap),
+                    height: numRows * (boxSize + gap),
                     child: GridView.count(
-                      crossAxisCount: cols,
+                      crossAxisCount: gridCols,
                       physics: const NeverScrollableScrollPhysics(),
                       mainAxisSpacing: gap,
                       crossAxisSpacing: gap,
-                      children: dayBoxes,
+                      children: squares,
                     ),
                   ),
                   const SizedBox(height: 6),
