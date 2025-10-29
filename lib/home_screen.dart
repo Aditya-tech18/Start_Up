@@ -15,7 +15,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int solvedQuestions = 0;
   bool _hasNavigatedToLogin = false;
 
-
   Map<String, int> subjectTotals = {
     "physics": 0,
     "chemistry": 0,
@@ -30,28 +29,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Map<DateTime, int> activityMap = {};
   bool isLoading = true;
   String? userId;
-@override
-void initState() {
-  super.initState();
-  WidgetsBinding.instance.addObserver(this);
-  _getUserIdAndFetchStats();
-}
-
-@override
-void dispose() {
-  WidgetsBinding.instance.removeObserver(this);
-  super.dispose();
-}
-
-@override
-void didChangeAppLifecycleState(AppLifecycleState state) {
-  if (state == AppLifecycleState.resumed) {
-    fetchStats(); // Jab app foreground pe aayega, refresh kar dena data
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _getUserIdAndFetchStats();
   }
-}
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
-
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      fetchStats(); // Jab app foreground pe aayega, refresh kar dena data
+    }
+  }
 
   Future<void> _getUserIdAndFetchStats() async {
     userId = Supabase.instance.client.auth.currentUser?.id;
@@ -63,7 +59,7 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
     final client = Supabase.instance.client;
 
     final totalQRes = await client.from('questions').select('subject');
-    if (totalQRes!= null) {
+    if (totalQRes != null) {
       totalQuestions = (totalQRes as List).length;
       subjectTotals = {"physics": 0, "chemistry": 0, "maths": 0};
       for (var row in (totalQRes as List)) {
@@ -82,14 +78,13 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
 
     subjectSolved = {"physics": 0, "chemistry": 0, "maths": 0};
     if (solvedQRes != null && (solvedQRes as List).isNotEmpty) {
-      final questionIds = (solvedQRes as List)
-          .map((e) => e['question_id'] as int)
-          .toList();
+      final questionIds =
+          (solvedQRes as List).map((e) => e['question_id'] as int).toList();
       if (questionIds.isNotEmpty) {
         final questionsRes = await client
             .from('questions')
             .select('id, subject')
-            .filter('id', 'in',questionIds);
+            .filter('id', 'in', questionIds);
         for (var row in (questionsRes as List)) {
           final subj = (row['subject'] ?? '').toString().toLowerCase();
           if (subjectSolved.containsKey(subj)) {
@@ -100,10 +95,11 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
     }
 
     activityMap.clear();
-    if (solvedQRes!= null) {
+    if (solvedQRes != null) {
       for (var row in (solvedQRes as List)) {
         if (row['submitted_at'] == null) continue;
-        final date = DateTime.tryParse(row['submitted_at'].toString())?.toLocal();
+        final date =
+            DateTime.tryParse(row['submitted_at'].toString())?.toLocal();
         if (date == null) continue;
         final day = DateTime(date.year, date.month, date.day);
         activityMap[day] = (activityMap[day] ?? 0) + 1;
@@ -113,200 +109,207 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
     setState(() => isLoading = false);
   }
 
-@override
-Widget build(BuildContext context) {
-  return StreamBuilder<AuthState>(
-    stream: Supabase.instance.client.auth.onAuthStateChange,
-    builder: (context, snapshot) {
-      // Wait for connection
-      if (snapshot.connectionState == ConnectionState.waiting) {
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthState>(
+      stream: Supabase.instance.client.auth.onAuthStateChange,
+      builder: (context, snapshot) {
+        // Wait for connection
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
+            ),
+          );
+        }
+
+        final session = snapshot.data?.session;
+        if (session == null) {
+          if (!_hasNavigatedToLogin) {
+            _hasNavigatedToLogin = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.of(context).pushReplacementNamed('/login');
+            });
+          }
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
+            ),
+          );
+        }
+
+        // User is logged in, ensure userId is set
+        if (userId == null) {
+          userId = session.user.id;
+          _getUserIdAndFetchStats();
+        }
+
+        // Show loading while fetching data
+        if (isLoading) {
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
+            ),
+          );
+        }
+
+        // User logged in + data loaded, show home screen
         return Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
+          appBar: AppBar(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            elevation: 0,
+            leading: const Icon(Icons.menu, color: Colors.white),
+            title: const Text('Hello, Student',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            actions: const [
+              Icon(Icons.notifications_none, color: Colors.white),
+              SizedBox(width: 12),
+              Icon(Icons.person, color: Colors.white),
+              SizedBox(width: 16),
+            ],
           ),
-        );
-      }
-
-final session = snapshot.data?.session;
-if (session == null) {
-  if (!_hasNavigatedToLogin) {
-    _hasNavigatedToLogin = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(context).pushReplacementNamed('/login');
-    });
-  }
-  return Scaffold(
-    body: Center(
-      child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-    ),
-  );
-}
-
-
-      // User is logged in, ensure userId is set
-      if (userId == null) {
-        userId = session.user.id;
-        _getUserIdAndFetchStats();
-      }
-
-      // Show loading while fetching data
-      if (isLoading) {
-        return Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-          ),
-        );
-      }
-
-      // User logged in + data loaded, show home screen
-      return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          elevation: 0,
-          leading: const Icon(Icons.menu, color: Colors.white),
-          title: const Text('Hello, Student', style: TextStyle(fontWeight: FontWeight.bold)),
-          actions: const [
-            Icon(Icons.notifications_none, color: Colors.white),
-            SizedBox(width: 12),
-            Icon(Icons.person, color: Colors.white),
-            SizedBox(width: 16),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Search for questions, topics...',
-                    prefixIcon: Icon(Icons.search, color: Colors.white54),
+          body: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Search for questions, topics...',
+                      prefixIcon: Icon(Icons.search, color: Colors.white54),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text(
-                      '"The best way to predict the future is to create it."',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Color(0xFF9C27B0),
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w500,
+                  const SizedBox(height: 16),
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        '"The best way to predict the future is to create it."',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF9C27B0),
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Center(child: _buildSolvedCircle()),
+                  const SizedBox(height: 10),
+                  _buildSubjectStats(),
+                  const SizedBox(height: 36),
+                  Text('Submissions in the past year',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 8),
+                  ActivityHeatmap(activityMap: activityMap),
+                  const SizedBox(height: 10),
+                  _buildAchievementPostCard(context),
+                  const SizedBox(height: 20),
+                  Text('Explore Core Features',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 10),
+                  _buildFeatureCardsGrid(context),
+                  const SizedBox(height: 20),
+                  Text('Community Feed',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 10),
+                  _buildActivityFeedItem(
+                      context, 'Welcome! Start your first challenge.'),
+                  _buildActivityFeedItem(
+                      context, 'Connect with your first mentor!'),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSolvedCircle() {
+    final percent = totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          SizedBox(
+            width: 140,
+            height: 140,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Background circle
+                Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.grey[700]!,
+                      width: 2,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Center(child: _buildSolvedCircle()),
-                const SizedBox(height: 10),
-                _buildSubjectStats(),
-                const SizedBox(height: 36),
-                Text('Submissions in the past year',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 8),
-                ActivityHeatmap(activityMap: activityMap),
-                const SizedBox(height: 10),
-                _buildAchievementPostCard(context),
-                const SizedBox(height: 20),
-                Text('Explore Core Features',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 10),
-                _buildFeatureCardsGrid(context),
-                const SizedBox(height: 20),
-                Text('Community Feed',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 10),
-                _buildActivityFeedItem(context, 'Welcome! Start your first challenge.'),
-                _buildActivityFeedItem(context, 'Connect with your first mentor!'),
-                const SizedBox(height: 20),
+                // Progress arc (outer ring with gradient)
+                SizedBox(
+                  width: 140,
+                  height: 140,
+                  child: CircularProgressIndicator(
+                    value: percent,
+                    strokeWidth: 12,
+                    backgroundColor: Colors.grey[800],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      percent < 0.33
+                          ? Colors.red
+                          : percent < 0.66
+                              ? Colors.orange
+                              : Colors.green,
+                    ),
+                  ),
+                ),
+                // Center text
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$solvedQuestions',
+                      style: const TextStyle(
+                        fontSize: 44,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      '/$totalQuestions',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-        ),
-      );
-    },
-  );
-}
-
-
-Widget _buildSolvedCircle() {
-  final percent = totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
-  return Container(
-    padding: const EdgeInsets.all(20),
-    child: Column(
-      children: [
-        SizedBox(
-          width: 140,
-          height: 140,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Background circle
-              Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.grey[700]!,
-                    width: 2,
-                  ),
-                ),
-              ),
-              // Progress arc (outer ring with gradient)
-              SizedBox(
-                width: 140,
-                height: 140,
-                child: CircularProgressIndicator(
-                  value: percent,
-                  strokeWidth: 12,
-                  backgroundColor: Colors.grey[800],
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    percent < 0.33 ? Colors.red : percent < 0.66 ? Colors.orange : Colors.green,
-                  ),
-                ),
-              ),
-              // Center text
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '$solvedQuestions',
-                    style: const TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    '/$totalQuestions',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+          const SizedBox(height: 8),
+          const Text(
+            'Solved',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.green,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Solved',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.green,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
+        ],
+      ),
+    );
+  }
 
   Widget _buildSubjectStats() {
     const subjectColors = {
@@ -338,15 +341,61 @@ Widget _buildSolvedCircle() {
 
   Widget _buildFeatureCardsGrid(BuildContext context) {
     final List<Map<String, dynamic>> features = [
-      {'title': 'PYQ Mains', 'subtitle': 'Foundational Practice', 'icon': Icons.lightbulb_outline, 'color1': const Color(0xFFE57C23), 'color2': const Color(0xFFFF9800)},
-      {'title': 'PYQ Advanced', 'icon': Icons.military_tech_outlined, 'color1': const Color(0xFF9C27B0), 'color2': const Color(0xFF673AB7)},
-      {'title': 'Mock Test', 'icon': Icons.timer_outlined, 'color1': const Color(0xFF00C0A4), 'color2': const Color(0xFF1976D2)},
-      {'title': 'Mentors', 'icon': Icons.group_add_outlined, 'color1': const Color(0xFF4CAF50), 'color2': const Color(0xFF388E3C)},
-      {'title': 'Career Counseling', 'icon': Icons.work_outline, 'color1': const Color(0xFF673AB7), 'color2': const Color(0xFFBA68C8)},
-      {'title': 'Study Material', 'icon': Icons.menu_book_outlined, 'color1': const Color(0xFFE57C23), 'color2': const Color(0xFFD32F2F)},
-      {'title': 'Friendly Battles', 'icon': Icons.sports_esports_outlined, 'color1': const Color(0xFF1976D2), 'color2': const Color(0xFF42A5F5)},
-      {'title': 'Confession Boards', 'icon': Icons.forum_outlined, 'color1': const Color(0xFFF44336), 'color2': const Color(0xFFE57C23)},
-      {'title': 'AI Doubt Solver', 'icon': Icons.psychology_outlined, 'color1': const Color(0xFF9C27B0), 'color2': const Color(0xFF7B1FA2)},
+      {
+        'title': 'PYQ Mains',
+        'subtitle': 'Foundational Practice',
+        'icon': Icons.lightbulb_outline,
+        'color1': const Color(0xFFE57C23),
+        'color2': const Color(0xFFFF9800)
+      },
+      {
+        'title': 'PYQ Advanced',
+        'icon': Icons.military_tech_outlined,
+        'color1': const Color(0xFF9C27B0),
+        'color2': const Color(0xFF673AB7)
+      },
+      {
+        'title': 'Mock Test',
+        'icon': Icons.timer_outlined,
+        'color1': const Color(0xFF00C0A4),
+        'color2': const Color(0xFF1976D2)
+      },
+      {
+        'title': 'Mentors',
+        'icon': Icons.group_add_outlined,
+        'color1': const Color(0xFF4CAF50),
+        'color2': const Color(0xFF388E3C)
+      },
+      {
+        'title': 'Career Counseling',
+        'icon': Icons.work_outline,
+        'color1': const Color(0xFF673AB7),
+        'color2': const Color(0xFFBA68C8)
+      },
+      {
+        'title': 'Study Material',
+        'icon': Icons.menu_book_outlined,
+        'color1': const Color(0xFFE57C23),
+        'color2': const Color(0xFFD32F2F)
+      },
+      {
+        'title': 'Friendly Battles',
+        'icon': Icons.sports_esports_outlined,
+        'color1': const Color(0xFF1976D2),
+        'color2': const Color(0xFF42A5F5)
+      },
+      {
+        'title': 'Confession Boards',
+        'icon': Icons.forum_outlined,
+        'color1': const Color(0xFFF44336),
+        'color2': const Color(0xFFE57C23)
+      },
+      {
+        'title': 'AI Doubt Solver',
+        'icon': Icons.psychology_outlined,
+        'color1': const Color(0xFF9C27B0),
+        'color2': const Color(0xFF7B1FA2)
+      },
     ];
 
     return GridView.builder(
@@ -379,7 +428,9 @@ Widget _buildSolvedCircle() {
     );
   }
 
-  Widget _buildColorfulGridCard(BuildContext context, String title, IconData icon, Color color1, Color color2, {VoidCallback? onTap}) {
+  Widget _buildColorfulGridCard(BuildContext context, String title,
+      IconData icon, Color color1, Color color2,
+      {VoidCallback? onTap}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -440,7 +491,10 @@ Widget _buildSolvedCircle() {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text('Share Your Achievement!',
-              style: TextStyle(color: const Color(0xFFE57C23), fontWeight: FontWeight.bold, fontSize: 14)),
+              style: TextStyle(
+                  color: const Color(0xFFE57C23),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14)),
           ElevatedButton.icon(
             onPressed: () {},
             icon: const Icon(Icons.create, size: 16),
@@ -469,7 +523,8 @@ Widget _buildSolvedCircle() {
           children: [
             const Icon(Icons.star, color: Color(0xFF00C0A4), size: 16),
             const SizedBox(width: 8),
-            Text(title, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            Text(title,
+                style: const TextStyle(color: Colors.white70, fontSize: 13)),
           ],
         ),
       ),
@@ -477,11 +532,10 @@ Widget _buildSolvedCircle() {
   }
 }
 
-
-
 class ActivityHeatmap extends StatefulWidget {
   final Map<DateTime, int> activityMap;
-  const ActivityHeatmap({required this.activityMap, Key? key}) : super(key: key);
+  const ActivityHeatmap({required this.activityMap, Key? key})
+      : super(key: key);
 
   @override
   _ActivityHeatmapState createState() => _ActivityHeatmapState();
@@ -506,6 +560,9 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
       return DateTime(date.year, date.month, 1);
     }).reversed.toList();
 
+    double boxSize = 12; // Ideal small square
+    double gap = 5; // Spacing like GitHub/LeetCode
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -516,73 +573,102 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: months.map((monthStart) {
-            final daysInMonth = DateUtils.getDaysInMonth(monthStart.year, monthStart.month);
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // The grid
-                  Wrap(
-                    direction: Axis.vertical,
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: List.generate(daysInMonth, (dayIdx) {
-                      final day = DateTime(monthStart.year, monthStart.month, dayIdx + 1);
-                      final count = widget.activityMap[day] ?? 0;
-                      final color = getPurpleShade(count);
-                      final isHovered = hoveredDate == day;
+            final daysInMonth =
+                DateUtils.getDaysInMonth(monthStart.year, monthStart.month);
+            final cols = (daysInMonth <= 14)
+                ? 7
+                : 8; // 7-8 column grid feels good visually for most months!
+            final rows = (daysInMonth / cols).ceil();
+            List<Widget> dayBoxes = [];
 
-                      return MouseRegion(
-                        onEnter: (_) => setState(() => hoveredDate = day),
-                        onExit: (_) => setState(() => hoveredDate = null),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 130),
-                          curve: Curves.easeOut,
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: color,
-                            borderRadius: BorderRadius.circular(3.5),
-                            boxShadow: isHovered && count > 0
-                                ? [
-                                    BoxShadow(
-                                      color: color.withOpacity(0.8),
-                                      blurRadius: 6,
-                                      spreadRadius: 1,
-                                    ),
-                                  ]
-                                : [],
-                            border: Border.all(
-                              color: isHovered ? const Color(0xFFc084fc) : const Color(0xFF161b22),
-                              width: isHovered ? 1.3 : 0.7,
+            for (int i = 0; i < daysInMonth; i++) {
+              final day = DateTime(monthStart.year, monthStart.month, i + 1);
+              final count = widget.activityMap[day] ?? 0;
+              final color = getPurpleShade(count);
+              final isHovered = hoveredDate == day;
+
+              dayBoxes.add(
+                MouseRegion(
+                  onEnter: (_) => setState(() => hoveredDate = day),
+                  onExit: (_) => setState(() => hoveredDate = null),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 140),
+                    width: boxSize,
+                    height: boxSize,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(3),
+                      boxShadow: isHovered && count > 0
+                          ? [
+                              BoxShadow(
+                                color: color.withOpacity(0.7),
+                                blurRadius: 5,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : [],
+                      border: Border.all(
+                        color: isHovered
+                            ? const Color(0xFFc084fc)
+                            : const Color(0xFF161b22),
+                        width: isHovered ? 1.2 : 0.5,
+                      ),
+                    ),
+                    margin: EdgeInsets.all(gap / 2),
+                    transform: isHovered
+                        ? (Matrix4.identity()..scale(1.18))
+                        : Matrix4.identity(),
+                    child: isHovered && count > 0
+                        ? Tooltip(
+                            message:
+                                "Solved $count question${count > 1 ? 's' : ''} on ${DateFormat('MMMM d, yyyy').format(day)}.",
+                            textStyle: const TextStyle(
+                                color: Colors.white, fontSize: 11),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF3a187a),
+                              borderRadius: BorderRadius.circular(7),
                             ),
-                          ),
-                          transform: isHovered ? (Matrix4.identity()..scale(1.28, 1.28)) : Matrix4.identity(),
-                          child: isHovered && count > 0
-                              ? Tooltip(
-                                  message: "Solved $count question${count > 1 ? 's' : ''} on ${DateFormat('MMMM d, yyyy').format(day)}.",
-                                  textStyle: const TextStyle(color: Colors.white, fontSize: 12),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF3a187a),
-                                    borderRadius: BorderRadius.circular(7),
-                                  ),
-                                  waitDuration: Duration.zero,
-                                  child: const SizedBox.expand(),
-                                )
-                              : null,
-                        ),
-                      );
-                    }),
+                            waitDuration: Duration.zero,
+                            child: const SizedBox.expand(),
+                          )
+                        : null,
                   ),
-                  const SizedBox(height: 7),
+                ),
+              );
+            }
+
+            // To keep grid aligned fill the last row with spacers if needed
+            int fillers = rows * cols - daysInMonth;
+            for (int i = 0; i < fillers; i++) {
+              dayBoxes.add(Container(
+                  width: boxSize,
+                  height: boxSize,
+                  margin: EdgeInsets.all(gap / 2)));
+            }
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: cols * (boxSize + gap),
+                    height: rows * (boxSize + gap),
+                    child: GridView.count(
+                      crossAxisCount: cols,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: gap,
+                      crossAxisSpacing: gap,
+                      children: dayBoxes,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   Text(
                     DateFormat.MMM().format(monthStart),
                     style: const TextStyle(
                       color: Color(0xFF8b949e),
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -595,8 +681,3 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
     );
   }
 }
-
-
-
-
-
