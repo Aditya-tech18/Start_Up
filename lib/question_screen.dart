@@ -166,29 +166,49 @@ class _QuestionScreenState extends State<QuestionScreen> {
     }
   }
 
-  void _submitAnswer(String selectedOption) {
-    if (_isSubmitted) return;
-    setState(() {
-      _selectedOption = selectedOption;
-      _isSubmitted = true;
-    });
-  }
+void _submitAnswer(String selectedOption) async {
+  if (_isSubmitted) return;
+  setState(() {
+    _selectedOption = selectedOption;
+    _isSubmitted = true;
+  });
 
-  void _nextQuestion() {
-    if (_currentQuestionIndex < _filteredQuestions.length - 1) {
-      setState(() {
-        _currentQuestionIndex++;
-        _selectedOption = null;
-        _userAnswer = '';
-        _isSubmitted = false;
-      });
-    } else {
+  // -------- DB Submission Logic (for heatmap) --------
+  try {
+    final user = Supabase.instance.client.auth.currentUser;
+    final questionId = _filteredQuestions[_currentQuestionIndex].id;
+
+    await Supabase.instance.client.from('submissions').insert({
+      'user_id': user?.id,
+      'question_id': questionId,
+      'submitted_at': DateTime.now().toIso8601String(),
+    });
+    print('✅ Submission recorded for heatmap');
+  } catch (e) {
+    print('❌ Failed to record submission: $e');
+  }
+  // ----------------------------------------------------
+}
+
+
+void _nextQuestion() {
+  if (_currentQuestionIndex < _filteredQuestions.length - 1) {
+    setState(() {
+      _currentQuestionIndex++;
+      _selectedOption = null;
+      _userAnswer = '';
+      _isSubmitted = false;
+    });
+  } else {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Chapter ${widget.chapterName} Completed!')),
       );
-    }
+    });
   }
+}
+
 
   Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.white}) {
     if (text.isEmpty) {

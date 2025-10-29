@@ -11,8 +11,14 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: ^6.1.0
-  supabase_flutter: ^2.10.2
+  cupertino_icons: ^1.0.2
+  supabase_flutter: ^2.10.3
+  google_sign_in: ^6.2.1
   flutter_math_fork: ^0.7.2  # ✅ ADDED FOR LATEX RENDERING
+  url_launcher: ^6.2.1
+  intl: ^0.20.2
+  
+
 
 flutter:
   uses-material-design: true
