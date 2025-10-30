@@ -3,6 +3,59 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:math' as math;
+
+class MultiSegmentProgressPainter extends CustomPainter {
+  final double physicsPercent;
+  final double chemistryPercent;
+  final double mathsPercent;
+  final double totalPercent;
+  final double strokeWidth;
+
+  MultiSegmentProgressPainter({
+    required this.physicsPercent,
+    required this.chemistryPercent,
+    required this.mathsPercent,
+    required this.totalPercent,
+    this.strokeWidth = 12,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Rect rect = Offset.zero & size;
+    final double startAngle = -math.pi / 2; // Start top center
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    double curAngle = startAngle;
+
+    // Draw Physics
+    if (physicsPercent > 0) {
+      paint.color = Colors.cyan;
+      double sweep = totalPercent * physicsPercent * 2 * math.pi;
+      canvas.drawArc(rect, curAngle, sweep, false, paint);
+      curAngle += sweep;
+    }
+    // Draw Chemistry
+    if (chemistryPercent > 0) {
+      paint.color = Colors.deepOrange;
+      double sweep = totalPercent * chemistryPercent * 2 * math.pi;
+      canvas.drawArc(rect, curAngle, sweep, false, paint);
+      curAngle += sweep;
+    }
+    // Draw Maths
+    if (mathsPercent > 0) {
+      paint.color = Colors.purple;
+      double sweep = totalPercent * mathsPercent * 2 * math.pi;
+      canvas.drawArc(rect, curAngle, sweep, false, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -196,9 +249,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Center(child: _buildSolvedCircle()),
-                  const SizedBox(height: 10),
-                  _buildSubjectStats(),
+_buildLeetCodeStyleStatus(),
                   const SizedBox(height: 36),
                   Text('Submissions in the past year',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -232,112 +283,175 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildSolvedCircle() {
-    final percent = totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          SizedBox(
-            width: 140,
-            height: 140,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Background circle
-                Container(
-                  width: 140,
-                  height: 140,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.grey[700]!,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                // Progress arc (outer ring with gradient)
-                SizedBox(
-                  width: 140,
-                  height: 140,
-                  child: CircularProgressIndicator(
-                    value: percent,
-                    strokeWidth: 12,
-                    backgroundColor: Colors.grey[800],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      percent < 0.33
-                          ? Colors.red
-                          : percent < 0.66
-                              ? Colors.orange
-                              : Colors.green,
-                    ),
-                  ),
-                ),
-                // Center text
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '$solvedQuestions',
-                      style: const TextStyle(
-                        fontSize: 44,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      '/$totalQuestions',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Solved',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.green,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+Widget _buildLeetCodeStyleStatus() {
+  const double circleSize = 140;
+  const double ringStroke = 12;
 
-  Widget _buildSubjectStats() {
-    const subjectColors = {
-      'physics': Colors.cyan,
-      'chemistry': Colors.deepOrange,
-      'maths': Colors.purple,
-    };
-    return Row(
+  final double percentSolved = totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
+
+  // Handle division by zero for progress segments
+  final int safeSolved = solvedQuestions == 0 ? 1 : solvedQuestions;
+  final double physicsPct = (subjectSolved["physics"] ?? 0) / safeSolved;
+  final double chemistryPct = (subjectSolved["chemistry"] ?? 0) / safeSolved;
+  final double mathsPct = (subjectSolved["maths"] ?? 0) / safeSolved;
+
+  const Map<String, Color> subjectColors = {
+    "physics": Colors.cyan,
+    "chemistry": Colors.deepOrange,
+    "maths": Colors.purple,
+  };
+
+  return Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: const Color(0xFF161b22),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: ['physics', 'chemistry', 'maths'].map((subject) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Left: Circle + solved counts + subject counts
+        Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '${subjectSolved[subject]} / ${subjectTotals[subject]}',
-              style: TextStyle(
-                fontSize: 18,
-                color: subjectColors[subject],
-                fontWeight: FontWeight.bold,
+            SizedBox(
+              width: circleSize,
+              height: circleSize,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Outer background circle
+                  Container(
+                    width: circleSize,
+                    height: circleSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey[900],
+                    ),
+                  ),
+                  // Custom ring
+                  CustomPaint(
+                    size: Size(circleSize, circleSize),
+                    painter: MultiSegmentProgressPainter(
+                      physicsPercent: physicsPct,
+                      chemistryPercent: chemistryPct,
+                      mathsPercent: mathsPct,
+                      totalPercent: percentSolved,
+                      strokeWidth: ringStroke,
+                    ),
+                  ),
+                  // Center stats
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$solvedQuestions',
+                        style: const TextStyle(
+                            fontSize: 44,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white
+                        ),
+                      ),
+                      Text(
+                        '/$totalQuestions',
+                        style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Solved',
+                        style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            Text(subject[0].toUpperCase() + subject.substring(1),
-                style: const TextStyle(fontSize: 14, color: Colors.white60)),
+            const SizedBox(height: 20),
+            // Subject counts row with colored bars and counts
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: ["physics", "chemistry", "maths"].map((subject) {
+                final countSolved = subjectSolved[subject] ?? 0;
+                final countTotal = subjectTotals[subject] ?? 0;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: subjectColors[subject],
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '$countSolved / $countTotal',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subject[0].toUpperCase() + subject.substring(1),
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
           ],
-        );
-      }).toList(),
-    );
-  }
+        ),
+        // Right: Badge/Rank box
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF161b22),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey[700]!),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Badges', style: TextStyle(color: Colors.white70, fontSize: 16)),
+              const SizedBox(height: 12),
+              const Text('1', style: TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  color: Colors.green.shade200,
+                  image: const DecorationImage(
+                    image: AssetImage('assets/images/50_days_badge.png'),
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Most Recent Badge', style: TextStyle(color: Colors.white70)),
+              const SizedBox(height: 6),
+              const Text(
+                '50 Days Badge 2025',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        )
+      ],
+    ),
+  );
+}
 
   Widget _buildFeatureCardsGrid(BuildContext context) {
     final List<Map<String, dynamic>> features = [

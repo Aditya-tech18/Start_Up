@@ -14,6 +14,8 @@ class PyqQuestion {
   final Map<String, String> options;
   final String correctAnswer;
   final String solution;
+  final String? questionImageUrl;
+
   
   const PyqQuestion({
     required this.id,
@@ -25,6 +27,7 @@ class PyqQuestion {
     required this.options,
     required this.correctAnswer,
     required this.solution,
+    this.questionImageUrl,   
   });
 
   factory PyqQuestion.fromJson(Map<String, dynamic> json) {
@@ -80,6 +83,7 @@ class PyqQuestion {
       options: parsedOptions,
       correctAnswer: json['correct_answer'] ?? '',
       solution: json['solution'] ?? '',
+      questionImageUrl: json['question_image_url'], 
     );
   }
 }
@@ -393,7 +397,8 @@ void _nextQuestion() {
       );
     }
     
-    final currentQuestion = _filteredQuestions[_currentQuestionIndex];
+final currentQuestion = _filteredQuestions[_currentQuestionIndex];
+
     
     return Scaffold(
       appBar: AppBar(
@@ -416,25 +421,39 @@ void _nextQuestion() {
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                      'JEE Main ${currentQuestion.year} | ${currentQuestion.shift} | Q.${currentQuestion.id}',
-                      style:
-                          const TextStyle(color: Colors.white54, fontSize: 12)),
-                  const SizedBox(height: 12),
-                  _buildQuestionBox(currentQuestion.text),
-                  const SizedBox(height: 24),
-                  ..._buildOptionsFromMap(context, currentQuestion.options,
-                      currentQuestion.correctAnswer),
-                  const SizedBox(height: 32),
-                  if (_isSubmitted) ...[
-                    _buildSolutionBox(context, currentQuestion.solution),
-                    const SizedBox(height: 16),
-                    _buildAIDoubtSolverButton(context),
-                  ],
-                ],
-              ),
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Text(
+        'JEE Main ${currentQuestion.year} | ${currentQuestion.shift} | Q.${currentQuestion.id}',
+        style: const TextStyle(color: Colors.white54, fontSize: 12)),
+    const SizedBox(height: 12),
+    // YAHAN PE Image Wala CODE Add karo
+    if (currentQuestion.questionImageUrl != null && currentQuestion.questionImageUrl!.isNotEmpty)
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12.0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            currentQuestion.questionImageUrl!,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) =>
+                Icon(Icons.broken_image, size: 60, color: Colors.white24),
+          ),
+        ),
+      ),
+    // AB tumhara question box jaise hai waise hi likho
+    _buildQuestionBox(currentQuestion.text),
+    const SizedBox(height: 24),
+    ..._buildOptionsFromMap(context, currentQuestion.options, currentQuestion.correctAnswer),
+    const SizedBox(height: 32),
+    if (_isSubmitted) ...[
+      _buildSolutionBox(context, currentQuestion.solution),
+      const SizedBox(height: 16),
+      _buildAIDoubtSolverButton(context),
+    ],
+  ],
+)
+
             ),
           ),
           _buildBottomNavigation(context),
@@ -546,6 +565,8 @@ void _nextQuestion() {
       ),
     );
   }
+
+  
 
   Widget _buildQuestionBox(String text) {
     return Container(
