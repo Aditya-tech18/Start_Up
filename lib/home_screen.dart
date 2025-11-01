@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
+import 'mock_test_list_screen.dart'; // Apne file path ke according adjust kar le
+
 
 class MultiSegmentProgressPainter extends CustomPainter {
   final double physicsPercent;
@@ -124,28 +126,47 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     final solvedQRes = await client
-        .from('submissions')
-        .select('question_id, submitted_at')
-        .eq('user_id', userId ?? '');
-    solvedQuestions = (solvedQRes as List).length;
+    .from('submissions')
+    .select('question_id, submitted_at')
+    .eq('user_id', userId ?? '');
 
-    subjectSolved = {"physics": 0, "chemistry": 0, "maths": 0};
-    if (solvedQRes != null && (solvedQRes as List).isNotEmpty) {
-      final questionIds =
-          (solvedQRes as List).map((e) => e['question_id'] as int).toList();
-      if (questionIds.isNotEmpty) {
-        final questionsRes = await client
-            .from('questions')
-            .select('id, subject')
-            .filter('id', 'in', questionIds);
-        for (var row in (questionsRes as List)) {
-          final subj = (row['subject'] ?? '').toString().toLowerCase();
-          if (subjectSolved.containsKey(subj)) {
-            subjectSolved[subj] = (subjectSolved[subj] ?? 0) + 1;
-          }
-        }
-      }
+final solvedQuestionsSet = <int>{};
+if (solvedQRes != null && solvedQRes is List) {
+  for (var submission in solvedQRes) {
+    final qid = submission['question_id'];
+    if (qid != null) {
+      solvedQuestionsSet.add(qid as int);
     }
+  }
+}
+solvedQuestions = solvedQuestionsSet.length;
+
+
+subjectSolved = {"physics": 0, "chemistry": 0, "maths": 0};
+
+final solvedQuestionIdSet = <int>{};
+if (solvedQRes != null && (solvedQRes as List).isNotEmpty) {
+  // Make a set of unique question IDs solved by the user
+  for (var entry in (solvedQRes as List)) {
+    final qid = entry['question_id'];
+    if (qid != null) solvedQuestionIdSet.add(qid as int);
+  }
+}
+// Query subject for these unique question IDs only
+if (solvedQuestionIdSet.isNotEmpty) {
+  final questionsRes = await client
+      .from('questions')
+      .select('id, subject')
+      .filter('id', 'in', solvedQuestionIdSet.toList());
+  // One question per subject per subjectSolved count
+  for (var row in (questionsRes as List)) {
+    final subj = (row['subject'] ?? '').toString().toLowerCase();
+    if (subjectSolved.containsKey(subj)) {
+      subjectSolved[subj] = (subjectSolved[subj] ?? 0) + 1;
+    }
+  }
+}
+
 
     activityMap.clear();
     if (solvedQRes != null) {
@@ -524,11 +545,18 @@ Widget _buildLeetCodeStyleStatus() {
       itemCount: 9,
       itemBuilder: (context, index) {
         final feature = features[index];
-        final onTapAction = feature['title'] == 'PYQ Mains'
-            ? () {
-                Navigator.of(context).pushNamed('/pyq_mains');
-              }
-            : null;
+    final onTapAction = feature['title'] == 'Mock Test'
+        ? () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => MockTestListScreen())
+            );
+          }
+        : feature['title'] == 'PYQ Mains'
+        ? () {
+            Navigator.of(context).pushNamed('/pyq_mains');
+          }
+        : null;
+
 
         return _buildColorfulGridCard(
           context,

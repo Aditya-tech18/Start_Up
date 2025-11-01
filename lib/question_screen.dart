@@ -526,11 +526,85 @@ final currentQuestion = _filteredQuestions[_currentQuestionIndex];
       ];
     }
     
-    return options.entries.map((entry) {
-      String displayText = '(${entry.key}) ${entry.value}';
-      return _buildOptionTile(context, displayText, correctAnswer);
-    }).toList();
+return options.entries.map((entry) {
+  // MERE CHANGE:
+  // Agar option image URL hai (http ya .png/.jpg etc)
+  String optionValue = entry.value.trim();
+  String optionDisplayText = '(${entry.key}) ';
+  if (optionValue.startsWith('http') && (
+      optionValue.endsWith('.png') || 
+      optionValue.endsWith('.jpg') ||
+      optionValue.endsWith('.jpeg'))) {
+    // Agar image hai, _buildOptionImageTile use karo
+    return _buildOptionImageTile(
+      context, optionDisplayText, optionValue, correctAnswer, entry.key
+    );
+  } else {
+    // Baaki normal LaTeX options
+    String displayText = optionDisplayText + optionValue;
+    return _buildOptionTile(context, displayText, correctAnswer);
   }
+}).toList();
+
+  }
+
+ Widget _buildOptionImageTile(BuildContext context, String prefix, String imageUrl, String correctAnswer, String optionKey) {
+  final isCorrect = correctAnswer == optionKey;
+  final isSelected = _selectedOption == (prefix + imageUrl);
+  Color tileColor = Theme.of(context).cardColor;
+  Color borderColor = Colors.white12;
+  IconData? trailingIcon;
+
+  if (_isSubmitted) {
+    if (isCorrect) {
+      tileColor = Colors.green.withOpacity(0.2);
+      borderColor = Colors.green;
+      trailingIcon = Icons.check_circle;
+    } else if (isSelected) {
+      tileColor = Colors.red.withOpacity(0.2);
+      borderColor = Colors.red;
+      trailingIcon = Icons.close_sharp;
+    }
+  } else if (isSelected) {
+    borderColor = const Color(0xFFE57C23);
+  }
+
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12.0),
+    child: GestureDetector(
+      onTap: _isSubmitted ? null : () => _submitAnswer(prefix + imageUrl),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: tileColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor, width: 2),
+        ),
+        child: Row(
+          children: [
+            Text(prefix, style: TextStyle(fontSize: 15, color: Colors.white)),
+            const SizedBox(width: 8),
+            Image.network(
+              imageUrl,
+              height: 70,   // <--- INCREASE THIS!
+              width: 110,   // <--- Optional, to keep aspect ratio
+              fit: BoxFit.contain,
+              errorBuilder: (c, o, s) =>
+                Icon(Icons.broken_image, color: Colors.white24, size: 32),
+            ),
+            if (trailingIcon != null) ...[
+              const SizedBox(width: 10),
+              Icon(trailingIcon, color: borderColor, size: 20),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+
 
   Widget _buildYearSelectorRow(BuildContext context) {
     return Container(
