@@ -1,0 +1,8 @@
+{
+  "deno.enable": true,
+  "deno.lint": true,
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
+  "cmake.sourceDirectory": "C:/Start_Up/linux"
+}

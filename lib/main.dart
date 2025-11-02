@@ -3,14 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // <<< NEW IMPORT >>>
-
 import 'splash_screen.dart';
 import 'login_screen.dart';
 import 'exam_selection_screen.dart';
 import 'home_screen.dart';
 import 'subscription_screen.dart';
 import 'pyq_chapter_list_screen.dart'; 
-
+import 'ai_chat_screen.dart'; 
+import 'question_screen.dart';
 
 // --- 🛑 ASYNCHRONOUS MAIN FUNCTION WITH SUPABASE INITIALIZATION 🛑 ---
 Future<void> main() async {
@@ -84,6 +84,11 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/subscription': (context) => const SubscriptionScreen(),
         '/pyq_mains': (context) => const PyqChapterListScreen(), // Correct Route Name
+        '/ai_chat': (context) {
+        // Extract the question object passed as an argument
+          final question = ModalRoute.of(context)!.settings.arguments as PyqQuestion;
+          return AiChatScreen(question: question);
+        }
       },
     );
   }

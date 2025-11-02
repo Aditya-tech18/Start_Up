@@ -659,11 +659,13 @@ final currentQuestion = _filteredQuestions[_currentQuestionIndex];
   }
 
   Widget _buildAIDoubtSolverButton(BuildContext context) {
+    final currentQuestion = _filteredQuestions[_currentQuestionIndex];
     return ElevatedButton.icon(
       onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('AI Doubt Solver is analyzing the question...')),
+        Navigator.pushNamed(
+          context,
+          '/ai_chat',
+          arguments: currentQuestion, // Pass the entire question object
         );
       },
       icon: const Icon(Icons.psychology_outlined, color: Colors.white),
