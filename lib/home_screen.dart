@@ -183,126 +183,137 @@ if (solvedQuestionIdSet.isNotEmpty) {
     setState(() => isLoading = false);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
-      builder: (context, snapshot) {
-        // Wait for connection
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-            ),
-          );
-        }
-
-        final session = snapshot.data?.session;
-        if (session == null) {
-          if (!_hasNavigatedToLogin) {
-            _hasNavigatedToLogin = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.of(context).pushReplacementNamed('/login');
-            });
-          }
-          return Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-            ),
-          );
-        }
-
-        // User is logged in, ensure userId is set
-        if (userId == null) {
-          userId = session.user.id;
-          _getUserIdAndFetchStats();
-        }
-
-        // Show loading while fetching data
-        if (isLoading) {
-          return Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-            ),
-          );
-        }
-
-        // User logged in + data loaded, show home screen
+@override
+Widget build(BuildContext context) {
+  return StreamBuilder<AuthState>(
+    stream: Supabase.instance.client.auth.onAuthStateChange,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
         return Scaffold(
-          appBar: AppBar(
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            elevation: 0,
-            leading: const Icon(Icons.menu, color: Colors.white),
-            title: const Text('Hello, Student',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            actions: const [
-              Icon(Icons.notifications_none, color: Colors.white),
-              SizedBox(width: 12),
-              Icon(Icons.person, color: Colors.white),
-              SizedBox(width: 16),
-            ],
+          body: Center(
+            child:
+                CircularProgressIndicator(color: const Color(0xFFE57C23)),
           ),
-          body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Search for questions, topics...',
-                      prefixIcon: Icon(Icons.search, color: Colors.white54),
+        );
+      }
+
+      final session = snapshot.data?.session;
+
+      if (session == null) {
+        if (!_hasNavigatedToLogin) {
+          _hasNavigatedToLogin = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.of(context).pushReplacementNamed('/login');
+          });
+        }
+        return Scaffold(
+          body: Center(
+            child:
+                CircularProgressIndicator(color: const Color(0xFFE57C23)),
+          ),
+        );
+      }
+
+      if (userId == null) {
+        userId = session.user.id;
+        _getUserIdAndFetchStats();
+      }
+
+      if (isLoading) {
+        return Scaffold(
+          body: Center(
+            child:
+                CircularProgressIndicator(color: const Color(0xFFE57C23)),
+          ),
+        );
+      }
+
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.2),
+          elevation: 0,
+          leading: const Icon(Icons.menu, color: Colors.white),
+          title: const Text('Hello, Student',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          actions: const [
+            Icon(Icons.notifications_none, color: Colors.white),
+            SizedBox(width: 12),
+            Icon(Icons.person, color: Colors.white),
+            SizedBox(width: 16),
+          ],
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/pexels-marek-piwnicki-3907296-11513053.jpg',
+                fit: BoxFit.cover,
+                color: Colors.black.withOpacity(0.5),
+                colorBlendMode: BlendMode.darken,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Search for questions, topics...',
+                        prefixIcon: Icon(Icons.search, color: Colors.white54),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                      child: Text(
-                        '"The best way to predict the future is to create it."',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Color(0xFF9C27B0),
-                          fontStyle: FontStyle.italic,
-                          fontWeight: FontWeight.w500,
+                    const SizedBox(height: 16),
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text(
+                          '"The best way to predict the future is to create it."',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Color(0xFF9C27B0),
+                            fontStyle: FontStyle.italic,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-_buildLeetCodeStyleStatus(),
-                  const SizedBox(height: 36),
-                  Text('Submissions in the past year',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold, fontSize: 18)),
-                  const SizedBox(height: 8),
-                  ActivityHeatmap(activityMap: activityMap),
-                  const SizedBox(height: 10),
-                  _buildAchievementPostCard(context),
-                  const SizedBox(height: 20),
-                  Text('Explore Core Features',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold, fontSize: 18)),
-                  const SizedBox(height: 10),
-                  _buildFeatureCardsGrid(context),
-                  const SizedBox(height: 20),
-                  Text('Community Feed',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold, fontSize: 18)),
-                  const SizedBox(height: 10),
-                  _buildActivityFeedItem(
-                      context, 'Welcome! Start your first challenge.'),
-                  _buildActivityFeedItem(
-                      context, 'Connect with your first mentor!'),
-                  const SizedBox(height: 20),
-                ],
+                    const SizedBox(height: 16),
+                    _buildLeetCodeStyleStatus(),
+                    const SizedBox(height: 36),
+                    Text('Submissions in the past year',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 8),
+                    ActivityHeatmap(activityMap: activityMap),
+                    const SizedBox(height: 10),
+                    _buildAchievementPostCard(context),
+                    const SizedBox(height: 20),
+                    Text('Explore Core Features',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 10),
+                    _buildFeatureCardsGrid(context),
+                    const SizedBox(height: 20),
+                    Text('Community Feed',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 10),
+                    _buildActivityFeedItem(context, 'Welcome! Start your first challenge.'),
+                    _buildActivityFeedItem(context, 'Connect with your first mentor!'),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
-    );
-  }
+          ],
+        ),
+      );
+    },
+  );
+}
+
 
 Widget _buildLeetCodeStyleStatus() {
   const double circleSize = 140;
@@ -697,10 +708,11 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
   @override
   Widget build(BuildContext context) {
     DateTime now = DateTime.now();
-    final months = List.generate(12, (i) {
-      final date = DateTime(now.year, now.month - i, 1);
-      return DateTime(date.year, date.month, 1);
-    }).reversed.toList();
+final months = List.generate(12, (i) {
+  final date = DateTime(now.year, now.month - i, 1);
+  return DateTime(date.year, date.month, 1);
+});
+
 
     const double boxSize = 10;
     const double gap = 2;
