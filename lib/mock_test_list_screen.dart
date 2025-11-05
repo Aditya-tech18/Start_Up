@@ -1,17 +1,54 @@
-import 'package:flutter/material.dart';
-import 'mock_test_list_screen.dart'; // Apne file path ke according adjust kar le
+// lib/mock_test_list_screen.dart
 
+import 'package:flutter/material.dart';
+import 'mock_test_instructions_screen.dart';
 
 class MockTestListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> mockTests = List.generate(10, (i) => {
-      'id': i + 1,
-      'title': 'Mock Test ${i + 1}',
-      'date': '${25 + i} Jan 2024',
-      'status': i == 2 ? 'Attempted' : i == 1 ? 'Missed' : 'New',
-      'attempts': i == 2 ? 1 : 0,
-    });
+    // List of all available mock tests
+    final List<Map<String, dynamic>> mockTests = [
+      {
+        'id': 1,
+        'title': 'Mock Test 1',
+        'date': '25 Jan 2024',
+        'time': '10:00 AM',
+        'status': 'New',
+        'attempts': 0,
+      },
+      {
+        'id': 2,
+        'title': 'Mock Test 2',
+        'date': '26 Jan 2024',
+        'time': '10:00 AM',
+        'status': 'New',
+        'attempts': 0,
+      },
+      {
+        'id': 3,
+        'title': 'Mock Test 3',
+        'date': '27 Jan 2024',
+        'time': '10:00 AM',
+        'status': 'New',
+        'attempts': 0,
+      },
+      {
+        'id': 4,
+        'title': 'Mock Test 4',
+        'date': '28 Jan 2024',
+        'time': '10:00 AM',
+        'status': 'New',
+        'attempts': 0,
+      },
+      {
+        'id': 5,
+        'title': 'Mock Test 5',
+        'date': '29 Jan 2024',
+        'time': '10:00 AM',
+        'status': 'New',
+        'attempts': 0,
+      },
+    ];
 
     return Scaffold(
       backgroundColor: Color(0xFF161b22),
@@ -19,6 +56,10 @@ class MockTestListScreen extends StatelessWidget {
         title: Text("Mock Tests", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Color(0xFF161b22),
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: ListView.builder(
         padding: EdgeInsets.all(20),
@@ -26,6 +67,7 @@ class MockTestListScreen extends StatelessWidget {
         itemBuilder: (context, idx) {
           final test = mockTests[idx];
           Color statusColor;
+          
           switch (test['status']) {
             case 'Attempted':
               statusColor = Colors.green;
@@ -36,10 +78,14 @@ class MockTestListScreen extends StatelessWidget {
             default:
               statusColor = Color(0xFF9C27B0); // purple for "New"
           }
+
           return GestureDetector(
             onTap: () {
               Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => MockTestInstructionsPage(title: test['title'])));
+                  builder: (_) => MockTestInstructionsPage(
+                    title: test['title'],
+                    testId: test['id'],
+                  )));
             },
             child: Container(
               margin: EdgeInsets.only(bottom: 20),
@@ -85,7 +131,7 @@ class MockTestListScreen extends StatelessWidget {
                       Text('🧑‍💻 ${test['attempts']} Attempts',
                           style: TextStyle(color: Colors.white70, fontSize: 13)),
                       SizedBox(width: 16),
-                      Text('📅 ${test['date']} at 10:00 AM',
+                      Text('📅 ${test['date']} at ${test['time']}',
                           style: TextStyle(color: Colors.white38, fontSize: 13)),
                     ],
                   ),
@@ -95,114 +141,6 @@ class MockTestListScreen extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class MockTestInstructionsPage extends StatelessWidget {
-  final String title;
-  MockTestInstructionsPage({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFF161b22),
-      appBar: AppBar(
-        title: Text(title,
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Color(0xFF161b22),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(24),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Color(0xFF1E1E1E).withOpacity(0.93),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Color(0xFFFF9800), width: 1),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'General instructions',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
-                ),
-                SizedBox(height: 10),
-                RichText(
-                  text: TextSpan(
-                      style: TextStyle(fontSize: 15, color: Colors.white70),
-                      children: [
-                        TextSpan(text: "Physics - ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                        TextSpan(text: "Full Syllabus\n"),
-                        TextSpan(text: "Chemistry - ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                        TextSpan(text: "Full Syllabus\n"),
-                        TextSpan(text: "Maths - ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                        TextSpan(text: "Full Syllabus\n"),
-                      ]),
-                ),
-                SizedBox(height: 16),
-                Text("Test instructions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFFF9800))),
-                SizedBox(height: 9),
-                Text(
-                  "1. The Test consists of Three Sections: - Physics, Chemistry, Mathematics.\n"
-                  "2. Total number of Questions:- 90 (Each section consists of Thirty questions).\n"
-                  "3. It will have 20 SCQ type and 10 Integer type (Attempt any 5 for Integer).\n"
-                  "4. Test Duration:- 180 mins.\n"
-                  "5. Test Timing:- 10:00 AM\n"
-                  "6. Result Timing :- 10:00 AM (Wednesday)\n"
-                  "7. Marking Scheme:-\n"
-                  "SCQ: +4 for correct, -1 for wrong\n"
-                  "Integer: +4 for correct, -1 for wrong\n",
-                  style: TextStyle(fontSize: 15, color: Colors.white),
-                ),
-                SizedBox(height: 28),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (_) => MockTestPaperScreen()),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF9C27B0),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 13),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      child: Text("Start Test"),
-                    ),
-                  ],
-                )
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class MockTestPaperScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFF1E1E1E),
-      appBar: AppBar(
-        title: Text('Mock Test Paper'),
-        backgroundColor: Color(0xFF1E1E1E),
-      ),
-      body: Center(
-        child: Text(
-          'Mock Test (Coming Soon)',
-          style: TextStyle(fontSize: 24, color: Color(0xFF9C27B0)),
-        ),
       ),
     );
   }

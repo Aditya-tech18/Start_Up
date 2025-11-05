@@ -229,19 +229,8 @@ Widget build(BuildContext context) {
       }
 
       return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.2),
-          elevation: 0,
-          leading: const Icon(Icons.menu, color: Colors.white),
-          title: const Text('Hello, Student',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          actions: const [
-            Icon(Icons.notifications_none, color: Colors.white),
-            SizedBox(width: 12),
-            Icon(Icons.person, color: Colors.white),
-            SizedBox(width: 16),
-          ],
-        ),
+appBar: AppBar(toolbarHeight: 0, elevation: 0, backgroundColor: Colors.transparent),
+
         body: Stack(
           children: [
             Positioned.fill(
@@ -258,13 +247,7 @@ Widget build(BuildContext context) {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Search for questions, topics...',
-                        prefixIcon: Icon(Icons.search, color: Colors.white54),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -272,7 +255,7 @@ Widget build(BuildContext context) {
                           '"The best way to predict the future is to create it."',
                           style: TextStyle(
                             fontSize: 15,
-                            color: Color(0xFF9C27B0),
+                            color: Color.fromARGB(255, 176, 137, 39),
                             fontStyle: FontStyle.italic,
                             fontWeight: FontWeight.w500,
                           ),
@@ -287,14 +270,12 @@ Widget build(BuildContext context) {
                             fontWeight: FontWeight.bold, fontSize: 18)),
                     const SizedBox(height: 8),
                     ActivityHeatmap(activityMap: activityMap),
-                    const SizedBox(height: 10),
-                    _buildAchievementPostCard(context),
-                    const SizedBox(height: 20),
                     Text('Explore Core Features',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold, fontSize: 18)),
                     const SizedBox(height: 10),
                     _buildFeatureCardsGrid(context),
+
                     const SizedBox(height: 20),
                     Text('Community Feed',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -316,17 +297,14 @@ Widget build(BuildContext context) {
 
 
 Widget _buildLeetCodeStyleStatus() {
-  const double circleSize = 140;
-  const double ringStroke = 12;
+  const double circleSize = 92;
+  const double ringStroke = 10;
 
   final double percentSolved = totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
-
-  // Handle division by zero for progress segments
   final int safeSolved = solvedQuestions == 0 ? 1 : solvedQuestions;
   final double physicsPct = (subjectSolved["physics"] ?? 0) / safeSolved;
   final double chemistryPct = (subjectSolved["chemistry"] ?? 0) / safeSolved;
   final double mathsPct = (subjectSolved["maths"] ?? 0) / safeSolved;
-
   const Map<String, Color> subjectColors = {
     "physics": Colors.cyan,
     "chemistry": Colors.deepOrange,
@@ -334,156 +312,175 @@ Widget _buildLeetCodeStyleStatus() {
   };
 
   return Container(
-    padding: const EdgeInsets.all(20),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
     decoration: BoxDecoration(
       color: const Color(0xFF161b22),
       borderRadius: BorderRadius.circular(20),
     ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        // Left: Circle + solved counts + subject counts
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: circleSize,
-              height: circleSize,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Outer background circle
-                  Container(
-                    width: circleSize,
-                    height: circleSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey[900],
-                    ),
-                  ),
-                  // Custom ring
-                  CustomPaint(
-                    size: Size(circleSize, circleSize),
-                    painter: MultiSegmentProgressPainter(
-                      physicsPercent: physicsPct,
-                      chemistryPercent: chemistryPct,
-                      mathsPercent: mathsPct,
-                      totalPercent: percentSolved,
-                      strokeWidth: ringStroke,
-                    ),
-                  ),
-                  // Center stats
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$solvedQuestions',
-                        style: const TextStyle(
-                            fontSize: 44,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white
-                        ),
-                      ),
-                      Text(
-                        '/$totalQuestions',
-                        style: const TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Solved',
-                        style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.green,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Subject counts row with colored bars and counts
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: ["physics", "chemistry", "maths"].map((subject) {
-                final countSolved = subjectSolved[subject] ?? 0;
-                final countTotal = subjectTotals[subject] ?? 0;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Column(
+    child: IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left Content
+          Expanded(
+            flex: 2,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: circleSize,
+                  height: circleSize,
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        width: circleSize,
+                        height: circleSize,
                         decoration: BoxDecoration(
-                          color: subjectColors[subject],
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '$countSolved / $countTotal',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
+                          shape: BoxShape.circle,
+                          color: Colors.grey[900],
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subject[0].toUpperCase() + subject.substring(1),
-                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      CustomPaint(
+                        size: Size(circleSize, circleSize),
+                        painter: MultiSegmentProgressPainter(
+                          physicsPercent: physicsPct,
+                          chemistryPercent: chemistryPct,
+                          mathsPercent: mathsPct,
+                          totalPercent: percentSolved,
+                          strokeWidth: ringStroke,
+                        ),
+                      ),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '$solvedQuestions',
+                            style: const TextStyle(
+                                fontSize: 36, // reduced
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white),
+                          ),
+                          Text(
+                            '/$totalQuestions',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Solved',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                );
-              }).toList(),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: ["physics", "chemistry", "maths"].map((subject) {
+                    final countSolved = subjectSolved[subject] ?? 0;
+                    final countTotal = subjectTotals[subject] ?? 0;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4), // less
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 7),
+                            decoration: BoxDecoration(
+                              color: subjectColors[subject],
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              '$countSolved / $countTotal',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            subject[0].toUpperCase() + subject.substring(1),
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
-          ],
-        ),
-        // Right: Badge/Rank box
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF161b22),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey[700]!),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Badges', style: TextStyle(color: Colors.white70, fontSize: 16)),
-              const SizedBox(height: 12),
-              const Text('1', style: TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  color: Colors.green.shade200,
-                  image: const DecorationImage(
-                    image: AssetImage('assets/images/50_days_badge.png'),
-                    fit: BoxFit.contain,
+          const SizedBox(width: 7),
+          // Right: Badge/Rank box
+          Container(
+            width: 90,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161b22),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[700]!),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // <--- this
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Badges',
+                    style: TextStyle(color: Colors.white70, fontSize: 13)),
+                const SizedBox(height: 8),
+                const Text('1',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 7),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.green.shade200,
+                    image: const DecorationImage(
+                      image: AssetImage('assets/images/50_days_badge.png'),
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              const Text('Most Recent Badge', style: TextStyle(color: Colors.white70)),
-              const SizedBox(height: 6),
-              const Text(
-                '50 Days Badge 2025',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 7),
+                const Text('Most Recent',
+                    style: TextStyle(color: Colors.white70, fontSize: 10)),
+                const SizedBox(height: 3),
+                const Text(
+                  '50 Days Badge',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+                const Text(
+                  '2025',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
-        )
-      ],
+        ],
+      ),
     ),
   );
 }
+
+
 
   Widget _buildFeatureCardsGrid(BuildContext context) {
     final List<Map<String, dynamic>> features = [
@@ -506,42 +503,7 @@ Widget _buildLeetCodeStyleStatus() {
         'color1': const Color(0xFF00C0A4),
         'color2': const Color(0xFF1976D2)
       },
-      {
-        'title': 'Mentors',
-        'icon': Icons.group_add_outlined,
-        'color1': const Color(0xFF4CAF50),
-        'color2': const Color(0xFF388E3C)
-      },
-      {
-        'title': 'Career Counseling',
-        'icon': Icons.work_outline,
-        'color1': const Color(0xFF673AB7),
-        'color2': const Color(0xFFBA68C8)
-      },
-      {
-        'title': 'Study Material',
-        'icon': Icons.menu_book_outlined,
-        'color1': const Color(0xFFE57C23),
-        'color2': const Color(0xFFD32F2F)
-      },
-      {
-        'title': 'Friendly Battles',
-        'icon': Icons.sports_esports_outlined,
-        'color1': const Color(0xFF1976D2),
-        'color2': const Color(0xFF42A5F5)
-      },
-      {
-        'title': 'Confession Boards',
-        'icon': Icons.forum_outlined,
-        'color1': const Color(0xFFF44336),
-        'color2': const Color(0xFFE57C23)
-      },
-      {
-        'title': 'AI Doubt Solver',
-        'icon': Icons.psychology_outlined,
-        'color1': const Color(0xFF9C27B0),
-        'color2': const Color(0xFF7B1FA2)
-      },
+
     ];
 
     return GridView.builder(
@@ -553,7 +515,7 @@ Widget _buildLeetCodeStyleStatus() {
         mainAxisSpacing: 10,
         childAspectRatio: 0.85,
       ),
-      itemCount: 9,
+      itemCount: 3,
       itemBuilder: (context, index) {
         final feature = features[index];
     final onTapAction = feature['title'] == 'Mock Test'
@@ -632,37 +594,6 @@ Widget _buildLeetCodeStyleStatus() {
     );
   }
 
-  Widget _buildAchievementPostCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE57C23).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE57C23).withOpacity(0.5)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text('Share Your Achievement!',
-              style: TextStyle(
-                  color: const Color(0xFFE57C23),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14)),
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.create, size: 16),
-            label: const Text('New Post', style: TextStyle(fontSize: 12)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE57C23),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActivityFeedItem(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6.0),
@@ -711,7 +642,8 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
 final months = List.generate(12, (i) {
   final date = DateTime(now.year, now.month - i, 1);
   return DateTime(date.year, date.month, 1);
-});
+}).reversed.toList(); // latest month last/right
+
 
 
     const double boxSize = 10;
@@ -727,6 +659,7 @@ final months = List.generate(12, (i) {
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
+        reverse: true, 
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: months.map((monthStart) {
@@ -834,3 +767,185 @@ final months = List.generate(12, (i) {
     );
   }
 }
+
+
+class PaperTodoList extends StatefulWidget {
+  final List<String> initialTasks;
+  final Function(List<bool>, List<String>, String, String) onSave;
+  final VoidCallback onClose;
+  final String dontForget;
+  final String notes;
+
+  const PaperTodoList({
+    required this.initialTasks,
+    required this.onSave,
+    required this.onClose,
+    required this.dontForget,
+    required this.notes,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  State<PaperTodoList> createState() => _PaperTodoListState();
+}
+
+class _PaperTodoListState extends State<PaperTodoList> {
+  List<String> tasks = [];
+  List<bool> checked = List.filled(5, false);
+  late TextEditingController dontForgetCtrl;
+  late TextEditingController notesCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    tasks = List<String>.from(widget.initialTasks);
+    dontForgetCtrl = TextEditingController(text: widget.dontForget);
+    notesCtrl = TextEditingController(text: widget.notes);
+  }
+
+  @override
+  void dispose() {
+    dontForgetCtrl.dispose();
+    notesCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 390,
+      padding: EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.black, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: 2,
+            right: 2,
+            child: IconButton(
+              icon: Icon(Icons.close, color: Colors.black),
+              tooltip: 'Close',
+              onPressed: widget.onClose,
+              splashRadius: 18,
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Text(
+                'To-Do List',
+                style: TextStyle(
+                  fontFamily: 'PermanentMarker', // Add to pubspec.yaml for handwriting look
+                  fontSize: 28,
+                  color: Colors.black,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              SizedBox(height: 8),
+              Divider(color: Colors.black, thickness: 1.5),
+              ...List.generate(5, (i) => Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: checked[i],
+                      onChanged: (val) => setState(() => checked[i] = val ?? false),
+                      activeColor: Colors.black,
+                      checkColor: Colors.white,
+                      side: BorderSide(color: Colors.black, width: 2),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        style: TextStyle(fontSize: 17, color: Colors.black),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'Task ${i + 1}',
+                          hintStyle: TextStyle(fontStyle: FontStyle.italic),
+                        ),
+                        controller: TextEditingController(text: tasks.length > i ? tasks[i] : ''),
+                        onChanged: (val) => tasks[i] = val,
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+              Divider(color: Colors.black, thickness: 1.2),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black, width: 1.1),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                      margin: EdgeInsets.only(right: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Don\'t forget:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          TextField(
+                            controller: dontForgetCtrl,
+                            style: TextStyle(fontSize: 14, color: Colors.black),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              border: InputBorder.none,
+                              hintText: 'Important...',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black, width: 1.1),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Notes:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          TextField(
+                            controller: notesCtrl,
+                            style: TextStyle(fontSize: 14, color: Colors.black),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              border: InputBorder.none,
+                              hintText: 'Extra notes...',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () {
+                  widget.onSave(checked, tasks, dontForgetCtrl.text, notesCtrl.text);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text('Save', style: TextStyle(fontSize: 17)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
