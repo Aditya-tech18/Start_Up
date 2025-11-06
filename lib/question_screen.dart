@@ -15,6 +15,8 @@ class PyqQuestion {
   final String correctAnswer;
   final String solution;
   final String? questionImageUrl;
+  
+  final dynamic initialQuestionId;
 
   
   const PyqQuestion({
@@ -27,8 +29,11 @@ class PyqQuestion {
     required this.options,
     required this.correctAnswer,
     required this.solution,
-    this.questionImageUrl,   
+    this.questionImageUrl,  
+    this.initialQuestionId, 
+        
   });
+
 
   factory PyqQuestion.fromJson(Map<String, dynamic> json) {
     Map<String, String> parsedOptions = {};
@@ -92,17 +97,20 @@ class QuestionScreen extends StatefulWidget {
   final String chapterName;
   final String subjectName;
   final String selectedYear;
-  
+  final int? initialQuestionId;
+
   const QuestionScreen({
-    super.key, 
-    required this.chapterName, 
+    Key? key,
+    required this.chapterName,
     required this.subjectName,
     required this.selectedYear,
-  });
+    this.initialQuestionId,
+  }) : super(key: key);
 
   @override
   State<QuestionScreen> createState() => _QuestionScreenState();
 }
+
 
 class _QuestionScreenState extends State<QuestionScreen> {
   List<PyqQuestion> _filteredQuestions = [];
@@ -148,12 +156,17 @@ class _QuestionScreenState extends State<QuestionScreen> {
         return;
       }
       
-      setState(() {
-        _filteredQuestions = (response as List)
-            .map((json) => PyqQuestion.fromJson(json))
-            .toList();
-        _isLoading = false;
-      });
+setState(() {
+  _filteredQuestions = (response as List)
+      .map((json) => PyqQuestion.fromJson(json))
+      .toList();
+  _isLoading = false;
+  if (widget.initialQuestionId != null) {
+    final idx = _filteredQuestions.indexWhere((q) => q.id == widget.initialQuestionId);
+    if (idx != -1) _currentQuestionIndex = idx;
+  }
+});
+
       
       print('✅ Loaded ${_filteredQuestions.length} questions');
       if (_filteredQuestions.isNotEmpty) {
@@ -708,29 +721,35 @@ return options.entries.map((entry) {
     );
   }
 
-  Widget _buildSolutionBox(BuildContext context, String solution) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Solution',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFE57C23))),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(16),
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white38),
-          ),
-          child: _buildLatexText(solution, fontSize: 15, color: Colors.white70),
+Widget _buildSolutionBox(BuildContext context, String solution) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Solution',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFFE57C23),
         ),
-      ],
-    );
-  }
+      ),
+      const SizedBox(height: 8),
+      Container(
+        padding: const EdgeInsets.all(16),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white38),
+        ),
+        // Remove horizontal scroll!
+        child: _buildLatexText(solution, fontSize: 15, color: Colors.white70),
+      ),
+    ],
+  );
+}
+
+
 
   Widget _buildAIDoubtSolverButton(BuildContext context) {
     final currentQuestion = _filteredQuestions[_currentQuestionIndex];
