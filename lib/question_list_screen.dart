@@ -79,16 +79,20 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
             mathContent = mathContent.replaceAll('\\\\', '\\');
           }
           try {
-            spans.add(WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Math.tex(
-                  mathContent,
-                  textStyle: TextStyle(fontSize: fontSize + 2, color: color),
-                ),
-              ),
-            ));
+spans.add(WidgetSpan(
+  alignment: PlaceholderAlignment.middle,
+  child: SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Math.tex(
+        mathContent,
+        textStyle: TextStyle(fontSize: fontSize + 2, color: color),
+      ),
+    ),
+  ),
+));
+
           } catch (e) {
             spans.add(TextSpan(
                 text: '[Math Error]',
@@ -286,7 +290,11 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        _buildLatexText(q['question_text'] ?? '', fontSize: 15, color: Colors.white),
+                                       SingleChildScrollView(
+  scrollDirection: Axis.horizontal,
+  child: _buildLatexText(q['question_text'] ?? '', fontSize: 15, color: Colors.white),
+)
+,
                                         const SizedBox(height: 12),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

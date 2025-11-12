@@ -1,18 +1,28 @@
-// lib/services/mock_test_service.dart
-
 import 'package:saas_new/models_mock_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'models_mock_test.dart';
 
 class MockTestService {
   final SupabaseClient supabase;
 
   MockTestService({required this.supabase});
 
-  /// Fetch random questions for a subject with split between MCQ and Integer
+  /// Fetches ONLY questions for 2025 2 April shift 2
+  Future<List<Question>> fetchApril2Shift2Questions() async {
+    final response = await supabase
+        .from('questions')
+        .select()
+        .like('id', '2025242%')
+        .order('id', ascending: true);
+
+    return (response as List)
+        .map((q) => Question.fromJson(q))
+        .toList();
+  }
+
+  /// If you still want to support classic random subject-logic:
   Future<List<Question>> fetchQuestionsForSubject(String subject) async {
     try {
-      // Fetch 20 MCQ questions (where options_list is NOT null)
+      // 20 MCQ (options_list NOT null)
       final mcqResponse = await supabase
           .from('questions')
           .select()
@@ -21,12 +31,12 @@ class MockTestService {
           .limit(20)
           .order('id', ascending: false);
 
-      // Fetch 10 Integer questions (where options_list IS null)
+      // 10 Integer (options_list IS null)
       final integerResponse = await supabase
           .from('questions')
           .select()
           .eq('subject', subject)
-    .not('options_list', 'is', null)
+  .filter('options_list', 'is', null)
 
           .limit(10)
           .order('id', ascending: false);
@@ -36,14 +46,11 @@ class MockTestService {
       List<Question> integerQuestions =
           (integerResponse as List).map((q) => Question.fromJson(q)).toList();
 
-      // Shuffle to get random selection
       mcqQuestions.shuffle();
       integerQuestions.shuffle();
-
-      // Take only required number and shuffle together
       List<Question> allQuestions = [
         ...mcqQuestions.take(20),
-        ...integerQuestions.take(10),
+        ...integerQuestions.take(10)
       ];
       allQuestions.shuffle();
 
@@ -54,59 +61,31 @@ class MockTestService {
     }
   }
 
-  /// Load all 90 questions for the test (30 per subject, 20 MCQ + 10 Integer each)
+  /// Loads all mock test questions for REAL exam (here: ONLY Shift 2 April 2025)
   Future<List<MockTestQuestion>> loadMockTestQuestions() async {
     try {
-      List<MockTestQuestion> allQuestions = [];
-      int globalQuestionNumber = 1;
-
-      // Subjects to process
-      const subjects = ['physics', 'chemistry', 'maths'];
-
-      for (String subject in subjects) {
-        final questions = await fetchQuestionsForSubject(subject);
-
-        // Separate MCQ (Section A) and Integer (Section B)
-        List<Question> sectionA = [];
-        List<Question> sectionB = [];
-
-        for (var q in questions) {
-          if (q.isMCQType) {
-            sectionA.add(q);
-          } else {
-            sectionB.add(q);
-          }
-        }
-
-        // Add Section A questions
-        for (var q in sectionA.take(20)) {
-          allQuestions.add(MockTestQuestion(
-            globalQuestionNumber: globalQuestionNumber++,
-            question: q,
-            section: 'A',
-            subject: subject,
-          ));
-        }
-
-        // Add Section B questions
-        for (var q in sectionB.take(10)) {
-          allQuestions.add(MockTestQuestion(
-            globalQuestionNumber: globalQuestionNumber++,
-            question: q,
-            section: 'B',
-            subject: subject,
-          ));
-        }
+      List<Question> all = await fetchApril2Shift2Questions();
+      List<MockTestQuestion> result = [];
+      int qnum = 1;
+      for (var q in all) {
+        // Suppose section is A for first 20, B for next 10, repeat for each subject or whatever rule you want.
+        String section = (qnum % 30 <= 20 && qnum % 30 != 0) ? 'A' : 'B';
+        result.add(MockTestQuestion(
+          globalQuestionNumber: qnum,
+          question: q,
+          section: section,
+          subject: q.subject,
+        ));
+        qnum++;
       }
-
-      return allQuestions;
+      return result;
     } catch (e) {
       print('Error loading mock test questions: $e');
       rethrow;
     }
   }
 
-  /// Submit the test and save results to database (ONLY RESULTS, NO INDIVIDUAL ANSWERS)
+  /// Submit the test (NO answer sheet, only final result details)
   Future<MockTestResult> submitTest({
     required String userId,
     required Map<int, QuestionAnswer> answers,
@@ -114,7 +93,6 @@ class MockTestService {
     required int timeSpentSeconds,
   }) async {
     try {
-      // Calculate scores and statistics
       int totalScore = 0;
       int physicsScore = 0, chemistryScore = 0, mathsScore = 0;
       int physicsCorrect = 0, physicsWrong = 0, physicsUnattempted = 0;
@@ -126,13 +104,11 @@ class MockTestService {
         var answer = answers[mockQ.globalQuestionNumber];
 
         if (answer == null || !answer.isAnswered) {
-          // Unanswered
           totalUnattempted++;
           if (mockQ.subject == 'physics') physicsUnattempted++;
           if (mockQ.subject == 'chemistry') chemistryUnattempted++;
           if (mockQ.subject == 'maths') mathsUnattempted++;
         } else {
-          // Answered
           int marks = answer.calculateMarks();
           totalScore += marks;
 
@@ -151,7 +127,6 @@ class MockTestService {
             if (marks == 4) mathsCorrect++;
             else mathsWrong++;
           }
-
           if (marks == 4) totalCorrect++;
           else totalWrong++;
         }
@@ -159,7 +134,6 @@ class MockTestService {
 
       int totalAttempted = totalCorrect + totalWrong;
 
-      // Insert into mock_test_results ONLY (no individual answers table)
       final resultResponse = await supabase
           .from('mock_test_results')
           .insert({
@@ -219,7 +193,6 @@ class MockTestService {
     }
   }
 
-  /// Fetch all previous test results for a user
   Future<List<MockTestResult>> fetchUserTestResults(String userId) async {
     try {
       final response = await supabase
@@ -237,7 +210,6 @@ class MockTestService {
     }
   }
 
-  /// Fetch specific test result
   Future<MockTestResult?> fetchTestResult(int resultId) async {
     try {
       final resultResponse = await supabase

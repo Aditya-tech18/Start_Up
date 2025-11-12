@@ -1,29 +1,23 @@
-// lib/screens/mock_test_result_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:saas_new/models_mock_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models_mock_test.dart';
-import 'services_mock_test.dart';
 import 'mock_test_list_screen.dart';
 
 class MockTestResultScreen extends StatefulWidget {
   final MockTestResult result;
 
-  const MockTestResultScreen({required this.result});
+  const MockTestResultScreen({Key? key, required this.result}) : super(key: key);
 
   @override
   _MockTestResultScreenState createState() => _MockTestResultScreenState();
 }
 
 class _MockTestResultScreenState extends State<MockTestResultScreen> {
-  late MockTestService mockTestService;
   List<MockTestResult>? previousResults;
 
   @override
   void initState() {
     super.initState();
-    mockTestService = MockTestService(supabase: Supabase.instance.client);
     _loadPreviousResults();
   }
 
@@ -31,9 +25,14 @@ class _MockTestResultScreenState extends State<MockTestResultScreen> {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
-        final results = await mockTestService.fetchUserTestResults(user.id);
+        final response = await Supabase.instance.client
+            .from('mock_test_results')
+            .select()
+            .eq('user_id', user.id)
+            .order('submitted_at', ascending: false);
+        final List data = response as List;
         setState(() {
-          previousResults = results;
+          previousResults = data.map((e) => MockTestResult.fromJson(e)).toList();
         });
       }
     } catch (e) {
@@ -50,338 +49,319 @@ class _MockTestResultScreenState extends State<MockTestResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final res = widget.result;
     return Scaffold(
-      backgroundColor: Color(0xFF161b22),
+      backgroundColor: const Color(0xFF161b22),
       appBar: AppBar(
-        title: Text('Test Results', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Color(0xFF161b22),
+        title: const Text('Test Results', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF161b22),
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Score Card
-              Container(
-                padding: EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Color(0xFF1E1E1E),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Color(0xFF9C27B0), width: 2),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Test Score',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
-                      ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Score Card
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF9C27B0), width: 2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Test Score',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w500,
                     ),
-                    SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${widget.result.totalScore}',
-                              style: TextStyle(
-                                fontSize: 48,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF9C27B0),
-                              ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${res.totalScore}',
+                            style: const TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF9C27B0),
                             ),
-                            Text(
-                              'out of 300',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white70,
-                              ),
+                          ),
+                          const Text(
+                            'out of 300',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
                             ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (widget.result.percentile != null)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'Percentile',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${widget.result.percentile!.toStringAsFixed(2)}%',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            SizedBox(height: 12),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (res.percentile != null)
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text(
-                                  'Accuracy',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.white70,
-                                  ),
+                                const Text(
+                                  'Percentile',
+                                  style: TextStyle(fontSize: 12, color: Colors.white70),
                                 ),
                                 Text(
-                                  widget.result.totalCorrect == 0
-                                      ? '0%'
-                                      : '${((widget.result.totalCorrect / widget.result.totalQuestionsAttempted) * 100).toStringAsFixed(1)}%',
-                                  style: TextStyle(
+                                  '${res.percentile!.toStringAsFixed(2)}%',
+                                  style: const TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.orange,
+                                    color: Colors.green,
                                   ),
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 20),
-
-              // Subject-wise Breakdown
-              Text(
-                'Subject-wise Analysis',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: 12),
-              _buildSubjectCard(
-                'Physics',
-                widget.result.physicsScore,
-                widget.result.physicsCorrect,
-                widget.result.physicsWrong,
-                widget.result.physicsUnattempted,
-                Colors.blue,
-              ),
-              SizedBox(height: 12),
-              _buildSubjectCard(
-                'Chemistry',
-                widget.result.chemistryScore,
-                widget.result.chemistryCorrect,
-                widget.result.chemistryWrong,
-                widget.result.chemistryUnattempted,
-                Colors.green,
-              ),
-              SizedBox(height: 12),
-              _buildSubjectCard(
-                'Maths',
-                widget.result.mathsScore,
-                widget.result.mathsCorrect,
-                widget.result.mathsWrong,
-                widget.result.mathsUnattempted,
-                Colors.orange,
-              ),
-              SizedBox(height: 24),
-
-              // Overall Statistics
-              Text(
-                'Overall Statistics',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'Correct',
-                      widget.result.totalCorrect.toString(),
-                      Colors.green,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(
-                      'Wrong',
-                      widget.result.totalWrong.toString(),
-                      Colors.red,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(
-                      'Unattempted',
-                      widget.result.totalUnattempted.toString(),
-                      Colors.grey,
-                    ),
+                          const SizedBox(height: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text(
+                                'Accuracy',
+                                style: TextStyle(fontSize: 12, color: Colors.white70),
+                              ),
+                              Text(
+                                res.totalCorrect == 0
+                                    ? '0%'
+                                    : '${((res.totalCorrect / res.totalQuestionsAttempted) * 100).toStringAsFixed(1)}%',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
-              SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'Attempted',
-                      widget.result.totalQuestionsAttempted.toString(),
-                      Color(0xFF9C27B0),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(
-                      'Time Taken',
-                      _formatTime(widget.result.timeSpentSeconds),
-                      Colors.orange,
-                    ),
-                  ),
-                ],
+            ),
+            const SizedBox(height: 20),
+
+            // Subject-wise Breakdown
+            const Text(
+              'Subject-wise Analysis',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
-              SizedBox(height: 24),
+            ),
+            const SizedBox(height: 12),
+            _buildSubjectCard(
+              'Physics',
+              res.physicsScore,
+              res.physicsCorrect,
+              res.physicsWrong,
+              res.physicsUnattempted,
+              Colors.blue,
+            ),
+            const SizedBox(height: 12),
+            _buildSubjectCard(
+              'Chemistry',
+              res.chemistryScore,
+              res.chemistryCorrect,
+              res.chemistryWrong,
+              res.chemistryUnattempted,
+              Colors.green,
+            ),
+            const SizedBox(height: 12),
+            _buildSubjectCard(
+              'Maths',
+              res.mathsScore,
+              res.mathsCorrect,
+              res.mathsWrong,
+              res.mathsUnattempted,
+              Colors.orange,
+            ),
+            const SizedBox(height: 24),
 
-              // Comparison with Previous Tests
-              if (previousResults != null && previousResults!.length > 1)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Comparison with Previous Tests',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF1E1E1E),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[800]!),
-                      ),
-                      child: Column(
-                        children: previousResults!
-                            .take(3)
-                            .toList()
-                            .asMap()
-                            .entries
-                            .map((entry) {
-                          int index = entry.key;
-                          MockTestResult prev = entry.value;
-                          bool isImproved =
-                              widget.result.totalScore > prev.totalScore;
-
-                          return Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Test ${index + 1}',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                Text(
-                                  '${prev.totalScore}/300',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Icon(
-                                  isImproved
-                                      ? Icons.trending_up
-                                      : Icons.trending_down,
-                                  color:
-                                      isImproved ? Colors.green : Colors.red,
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
+            // Overall Statistics
+            const Text(
+              'Overall Statistics',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Correct',
+                    res.totalCorrect.toString(),
+                    Colors.green,
+                  ),
                 ),
-              SizedBox(height: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    'Wrong',
+                    res.totalWrong.toString(),
+                    Colors.red,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    'Unattempted',
+                    res.totalUnattempted.toString(),
+                    Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    'Attempted',
+                    res.totalQuestionsAttempted.toString(),
+                    const Color(0xFF9C27B0),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    'Time Taken',
+                    _formatTime(res.timeSpentSeconds),
+                    Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
 
-              // Action Buttons
-              Row(
+            // Comparison with Previous Tests
+            if (previousResults != null && previousResults!.length > 1)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (_) => MockTestListScreen(),
+                  const Text(
+                    'Comparison with Previous Tests',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1E1E),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey),
+                    ),
+                    child: Column(
+                      children: previousResults!
+                          .take(3)
+                          .toList()
+                          .asMap()
+                          .entries
+                          .map((entry) {
+                        int index = entry.key;
+                        MockTestResult prev = entry.value;
+                        bool isImproved = res.totalScore > prev.totalScore;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Test ${index + 1}',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                '${prev.totalScore}/300',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Icon(
+                                isImproved ? Icons.trending_up : Icons.trending_down,
+                                color: isImproved ? Colors.green : Colors.red,
+                              ),
+                            ],
                           ),
                         );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF9C27B0),
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: Text(
-                        'Retake Test',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
+                      }).toList(),
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 16),
-            ],
-          ),
+            const SizedBox(height: 24),
+
+            // Retake Test Button
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => MockTestListScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF9C27B0),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'Retake Test',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildSubjectCard(
-    String subject,
-    int score,
-    int correct,
-    int wrong,
-    int unattempted,
-    Color color,
-  ) {
+  Widget _buildSubjectCard(String subject, int score, int correct, int wrong, int unattempted, Color color) {
     int total = correct + wrong + unattempted;
     double percentage = total == 0 ? 0 : (correct / total) * 100;
 
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Color(0xFF1E1E1E),
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.3), width: 1),
       ),
@@ -401,7 +381,7 @@ class _MockTestResultScreenState extends State<MockTestResultScreen> {
               ),
               Text(
                 '$score/${total * 4}',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -409,7 +389,7 @@ class _MockTestResultScreenState extends State<MockTestResultScreen> {
               ),
             ],
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
@@ -419,7 +399,7 @@ class _MockTestResultScreenState extends State<MockTestResultScreen> {
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -435,9 +415,9 @@ class _MockTestResultScreenState extends State<MockTestResultScreen> {
 
   Widget _buildStatCard(String label, String value, Color color) {
     return Container(
-      padding: EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Color(0xFF1E1E1E),
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
@@ -446,12 +426,12 @@ class _MockTestResultScreenState extends State<MockTestResultScreen> {
         children: [
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               color: Colors.white70,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(
@@ -467,7 +447,7 @@ class _MockTestResultScreenState extends State<MockTestResultScreen> {
 
   Widget _buildStatBadge(String text, Color color) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),

@@ -227,129 +227,136 @@ void _nextQuestion() {
 }
 
 
-  Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.white}) {
-    if (text.isEmpty) {
-      return Text('', style: TextStyle(fontSize: fontSize, color: color));
-    }
-    
-    List<InlineSpan> spans = [];
-    int currentIndex = 0;
-    
-    final blockMathRegex = RegExp(r'\$\$(.+?)\$\$', dotAll: true);
-    final blockMatches = blockMathRegex.allMatches(text).toList();
-    
-    List<int> blockMathPositions = [];
+Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.white}) {
+  if (text.isEmpty) {
+    return Text('', style: TextStyle(fontSize: fontSize, color: color));
+  }
+  
+  List<InlineSpan> spans = [];
+  int currentIndex = 0;
+  
+  final blockMathRegex = RegExp(r'\$\$(.+?)\$\$', dotAll: true);
+  final blockMatches = blockMathRegex.allMatches(text).toList();
+  
+  List<int> blockMathPositions = [];
+  for (var match in blockMatches) {
+    blockMathPositions.add(match.start);
+    blockMathPositions.add(match.end);
+  }
+  
+  while (currentIndex < text.length) {
+    bool isBlockMath = false;
     for (var match in blockMatches) {
-      blockMathPositions.add(match.start);
-      blockMathPositions.add(match.end);
-    }
-    
-    while (currentIndex < text.length) {
-      bool isBlockMath = false;
-      for (var match in blockMatches) {
-        if (currentIndex == match.start) {
-          isBlockMath = true;
-          
-          String mathContent = match.group(1)!.trim();
-          
-          if (mathContent.contains('\\\\')) {
-            mathContent = mathContent.replaceAll('\\\\', '\\');
-          }
-          
-          try {
-            spans.add(WidgetSpan(
-              alignment: PlaceholderAlignment.middle,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Math.tex(
-                  mathContent,
-                  textStyle: TextStyle(fontSize: fontSize + 2, color: color),
-                ),
-              ),
-            ));
-          } catch (e) {
-            print('Block LaTeX Error: $e for content: $mathContent');
-            spans.add(TextSpan(
-                text: '[Math Error]',
-                style: TextStyle(fontSize: fontSize - 2, color: Colors.red)));
-          }
-          
-          currentIndex = match.end;
-          break;
-        }
-      }
-      
-      if (isBlockMath) continue;
-      
-      int nextDollar = text.indexOf(r'$', currentIndex);
-      
-      if (nextDollar == -1) {
-        if (currentIndex < text.length) {
-          spans.add(TextSpan(
-              text: text.substring(currentIndex),
-              style: TextStyle(fontSize: fontSize, color: color)));
-        }
-        break;
-      }
-      
-      if (nextDollar > currentIndex) {
-        spans.add(TextSpan(
-            text: text.substring(currentIndex, nextDollar),
-            style: TextStyle(fontSize: fontSize, color: color)));
-      }
-      
-      bool skipThisDollar = false;
-      for (int pos in blockMathPositions) {
-        if (nextDollar == pos || nextDollar == pos - 1) {
-          skipThisDollar = true;
-          break;
-        }
-      }
-      
-      if (skipThisDollar) {
-        currentIndex = nextDollar + 1;
-        continue;
-      }
-      
-      int closingDollar = text.indexOf(r'$', nextDollar + 1);
-      
-      if (closingDollar == -1) {
-        spans.add(TextSpan(
-            text: text.substring(nextDollar),
-            style: TextStyle(fontSize: fontSize, color: color)));
-        break;
-      }
-      
-      String mathContent = text.substring(nextDollar + 1, closingDollar).trim();
-      
-      if (mathContent.isNotEmpty) {
+      if (currentIndex == match.start) {
+        isBlockMath = true;
+        
+        String mathContent = match.group(1)!.trim();
         if (mathContent.contains('\\\\')) {
           mathContent = mathContent.replaceAll('\\\\', '\\');
         }
-        
         try {
           spans.add(WidgetSpan(
             alignment: PlaceholderAlignment.middle,
-            child: Math.tex(mathContent,
-                textStyle: TextStyle(fontSize: fontSize, color: color)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Math.tex(
+                mathContent,
+                textStyle: TextStyle(fontSize: fontSize + 2, color: color),
+              ),
+            ),
           ));
         } catch (e) {
-          print('Inline LaTeX Error: $e for content: $mathContent');
+          print('Block LaTeX Error: $e for content: $mathContent');
           spans.add(TextSpan(
               text: '[Math Error]',
               style: TextStyle(fontSize: fontSize - 2, color: Colors.red)));
         }
+        
+        currentIndex = match.end;
+        break;
       }
-      
-      currentIndex = closingDollar + 1;
     }
     
-    if (spans.isEmpty) {
-      return Text(text, style: TextStyle(fontSize: fontSize, color: color));
+    if (isBlockMath) continue;
+    
+    int nextDollar = text.indexOf(r'$', currentIndex);
+    
+    if (nextDollar == -1) {
+      if (currentIndex < text.length) {
+        spans.add(TextSpan(
+            text: text.substring(currentIndex),
+            style: TextStyle(fontSize: fontSize, color: color)));
+      }
+      break;
     }
     
-    return RichText(text: TextSpan(children: spans));
+    if (nextDollar > currentIndex) {
+      spans.add(TextSpan(
+          text: text.substring(currentIndex, nextDollar),
+          style: TextStyle(fontSize: fontSize, color: color)));
+    }
+    
+    bool skipThisDollar = false;
+    for (int pos in blockMathPositions) {
+      if (nextDollar == pos || nextDollar == pos - 1) {
+        skipThisDollar = true;
+        break;
+      }
+    }
+    
+    if (skipThisDollar) {
+      currentIndex = nextDollar + 1;
+      continue;
+    }
+    
+    int closingDollar = text.indexOf(r'$', nextDollar + 1);
+    
+    if (closingDollar == -1) {
+      spans.add(TextSpan(
+          text: text.substring(nextDollar),
+          style: TextStyle(fontSize: fontSize, color: color)));
+      break;
+    }
+    
+    String mathContent = text.substring(nextDollar + 1, closingDollar).trim();
+    if (mathContent.isNotEmpty) {
+      if (mathContent.contains('\\\\')) {
+        mathContent = mathContent.replaceAll('\\\\', '\\');
+      }
+      try {
+        spans.add(WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: SingleChildScrollView(
+  scrollDirection: Axis.horizontal,
+  child: Math.tex(
+    mathContent,
+    textStyle: TextStyle(fontSize: fontSize, color: color),
+  ),
+)
+
+        ));
+      } catch (e) {
+        print('Inline LaTeX Error: $e for content: $mathContent');
+        spans.add(TextSpan(
+            text: '[Math Error]',
+            style: TextStyle(fontSize: fontSize - 2, color: Colors.red)));
+      }
+    }
+    
+    currentIndex = closingDollar + 1;
   }
+  
+  if (spans.isEmpty) {
+    return Text(text, style: TextStyle(fontSize: fontSize, color: color));
+  }
+  
+  return RichText(
+    text: TextSpan(children: spans),
+    softWrap: true,             // <-- Critical for overflow!
+    overflow: TextOverflow.visible,
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -475,30 +482,38 @@ final currentQuestion = _filteredQuestions[_currentQuestionIndex];
     );
   }
 
-  List<Widget> _buildOptionsFromMap(
-      BuildContext context, Map<String, String> options, String correctAnswer) {
-    if (options.isEmpty) {
-      return [
-        Container(
-          padding: const EdgeInsets.all(20),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _isSubmitted
-                  ? (_userAnswer == correctAnswer ? Colors.green : Colors.red)
-                  : const Color(0xFFE57C23),
-              width: 2,
-            ),
+List<Widget> _buildOptionsFromMap(
+    BuildContext context, Map<String, String> options, String correctAnswer) {
+      
+  if (options.isEmpty) {
+    // For numerical questions with NO options
+    return [
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isSubmitted
+                ? (_userAnswer == correctAnswer ? Colors.green : Colors.red)
+                : const Color(0xFFE57C23),
+            width: 2,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('Your Answer: ',
-                  style: TextStyle(fontSize: 18, color: Colors.white70)),
-              Text(
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text(
+              'Your Answer: ',
+              style: TextStyle(fontSize: 18, color: Colors.white70),
+            ),
+            Expanded(
+              child: Text(
                 _userAnswer.isEmpty ? 'Type you answer...' : _userAnswer,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -507,59 +522,68 @@ final currentQuestion = _filteredQuestions[_currentQuestionIndex];
                       : const Color(0xFFE57C23),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+      if (_isSubmitted && _userAnswer != correctAnswer)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.green, width: 2),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.check_circle, color: Colors.green, size: 24),
+              const SizedBox(width: 12),
+              const Text('Correct Answer: ',
+                  style: TextStyle(fontSize: 16, color: Colors.green)),
+              Text(
+                correctAnswer,
+                style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green),
+              ),
             ],
           ),
         ),
-        if (_isSubmitted && _userAnswer != correctAnswer)
-          Container(
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.green, width: 2),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 24),
-                const SizedBox(width: 12),
-                const Text('Correct Answer: ',
-                    style: TextStyle(fontSize: 16, color: Colors.green)),
-                Text(
-                  correctAnswer,
-                  style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green),
-                ),
-              ],
-            ),
-          ),
-      ];
-    }
-    
-return options.entries.map((entry) {
-  // MERE CHANGE:
-  // Agar option image URL hai (http ya .png/.jpg etc)
-  String optionValue = entry.value.trim();
-  String optionDisplayText = '(${entry.key}) ';
-  if (optionValue.startsWith('http') && (
-      optionValue.endsWith('.png') || 
-      optionValue.endsWith('.jpg') ||
-      optionValue.endsWith('.jpeg'))) {
-    // Agar image hai, _buildOptionImageTile use karo
-    return _buildOptionImageTile(
-      context, optionDisplayText, optionValue, correctAnswer, entry.key
-    );
-  } else {
-    // Baaki normal LaTeX options
-    String displayText = optionDisplayText + optionValue;
-    return _buildOptionTile(context, displayText, correctAnswer);
+    ];
   }
-}).toList();
 
-  }
+  
+  
+  // For MCQ style (with options)
+  return options.entries.map((entry) {
+    String optionPrefix = '(${entry.key}) ';
+    String optionValue = entry.value.trim();
+    String optionDisplayText = '(${entry.key}) ';
+    if (optionValue.startsWith('http') && (
+        optionValue.endsWith('.png') || 
+        optionValue.endsWith('.jpg') ||
+        optionValue.endsWith('.jpeg'))) {
+      return SizedBox(
+        width: double.infinity,
+        child: _buildOptionImageTile(
+          context, optionDisplayText, optionValue, correctAnswer, entry.key
+        ),
+      );
+    } else {
+      String displayText = optionDisplayText + optionValue;
+      return SizedBox(
+        width: double.infinity, // Always full width
+        child: _buildOptionTile(context, displayText, correctAnswer),
+      );
+    }
+  }).toList();
+}
+
+
 
  Widget _buildOptionImageTile(BuildContext context, String prefix, String imageUrl, String correctAnswer, String optionKey) {
   final isCorrect = correctAnswer == optionKey;
@@ -656,6 +680,7 @@ return options.entries.map((entry) {
   
 
   Widget _buildQuestionBox(String text) {
+    final renderedText = text.replaceAll(r'\n', '\n');
     return Container(
       padding: const EdgeInsets.all(16),
       width: double.infinity,
@@ -668,60 +693,67 @@ return options.entries.map((entry) {
     );
   }
 
-  Widget _buildOptionTile(
-      BuildContext context, String option, String correctAnswer) {
-    final isSelected = _selectedOption == option;
-    Color tileColor = Theme.of(context).cardColor;
-    Color borderColor = Colors.white12;
-    IconData? trailingIcon;
-    String correctOptionDisplay = '($correctAnswer)';
-    
-    if (_isSubmitted) {
-      if (option.startsWith(correctOptionDisplay)) {
-        tileColor = Colors.green.withOpacity(0.2);
-        borderColor = Colors.green;
-        trailingIcon = Icons.check_circle;
-      } else if (isSelected) {
-        tileColor = Colors.red.withOpacity(0.2);
-        borderColor = Colors.red;
-        trailingIcon = Icons.close_sharp;
-      }
-    } else if (isSelected) {
-      borderColor = const Color(0xFFE57C23);
-    }
+Widget _buildOptionTile(
+    BuildContext context, String option, String correctAnswer) {
+  final isSelected = _selectedOption == option;
+  Color tileColor = Theme.of(context).cardColor;
+  Color borderColor = Colors.white12;
+  IconData? trailingIcon;
+  String correctOptionDisplay = '($correctAnswer)';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: GestureDetector(
-        onTap: _isSubmitted ? null : () => _submitAnswer(option),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: tileColor,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: borderColor, width: 2),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildLatexText(option,
-                    fontSize: 15,
-                    color: _isSubmitted &&
-                            option.startsWith(correctOptionDisplay)
-                        ? Colors.green
-                        : Colors.white),
-              ),
-              if (trailingIcon != null)
-                Icon(trailingIcon, color: borderColor, size: 20),
-            ],
-          ),
-        ),
-      ),
-    );
+  if (_isSubmitted) {
+    if (option.startsWith(correctOptionDisplay)) {
+      tileColor = Colors.green.withOpacity(0.2);
+      borderColor = Colors.green;
+      trailingIcon = Icons.check_circle;
+    } else if (isSelected) {
+      tileColor = Colors.red.withOpacity(0.2);
+      borderColor = Colors.red;
+      trailingIcon = Icons.close_sharp;
+    }
+  } else if (isSelected) {
+    borderColor = const Color(0xFFE57C23);
   }
 
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12.0),
+    child: GestureDetector(
+      onTap: _isSubmitted ? null : () => _submitAnswer(option),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: tileColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor, width: 2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildLatexText(
+              option,
+              fontSize: 16,
+              color:
+                  _isSubmitted && option.startsWith(correctOptionDisplay)
+                      ? Colors.green
+                      : Colors.white,
+            ),
+            if (trailingIcon != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10.0),
+                child: Icon(trailingIcon, color: borderColor, size: 20),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+
+
 Widget _buildSolutionBox(BuildContext context, String solution) {
+  final renderedSolution = solution.replaceAll(r'\n', '\n');
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [

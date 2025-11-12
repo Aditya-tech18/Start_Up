@@ -183,6 +183,16 @@ if (solvedQuestionIdSet.isNotEmpty) {
     setState(() => isLoading = false);
   }
 
+
+String getRankName(int solved) {
+  if (solved < 50) return "Recruit";
+  if (solved < 100) return "Cadet";
+  if (solved < 200) return "Sergeant";
+  if (solved < 500) return "Commander";
+  if (solved < 1000) return "Major";
+  return "Marshal";
+}
+
 @override
 Widget build(BuildContext context) {
   return StreamBuilder<AuthState>(
@@ -300,16 +310,28 @@ Widget _buildLeetCodeStyleStatus() {
   const double circleSize = 92;
   const double ringStroke = 10;
 
-  final double percentSolved = totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
+  final double percentSolved =
+      totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
   final int safeSolved = solvedQuestions == 0 ? 1 : solvedQuestions;
   final double physicsPct = (subjectSolved["physics"] ?? 0) / safeSolved;
   final double chemistryPct = (subjectSolved["chemistry"] ?? 0) / safeSolved;
   final double mathsPct = (subjectSolved["maths"] ?? 0) / safeSolved;
+
   const Map<String, Color> subjectColors = {
     "physics": Colors.cyan,
     "chemistry": Colors.deepOrange,
     "maths": Colors.purple,
   };
+
+  // === Rank calculation based on solved count ===
+  String getRankName(int solved) {
+    if (solved < 50) return "Recruit";
+    if (solved < 100) return "Cadet";
+    if (solved < 200) return "Sergeant";
+    if (solved < 500) return "Commander";
+    if (solved < 1000) return "Major";
+    return "Marshal";
+  }
 
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
@@ -320,158 +342,169 @@ Widget _buildLeetCodeStyleStatus() {
     child: IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left Content
+          // ===== LEFT: Solved Circle + Subjects =====
           Expanded(
-            flex: 2,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: circleSize,
-                  height: circleSize,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: circleSize,
-                        height: circleSize,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey[900],
+            flex: 1,
+            child: Transform.translate(
+              offset: const Offset(-8, 0), // slight left shift for balance
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: circleSize,
+                    height: circleSize,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: circleSize,
+                          height: circleSize,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.grey[900],
+                          ),
                         ),
-                      ),
-                      CustomPaint(
-                        size: Size(circleSize, circleSize),
-                        painter: MultiSegmentProgressPainter(
-                          physicsPercent: physicsPct,
-                          chemistryPercent: chemistryPct,
-                          mathsPercent: mathsPct,
-                          totalPercent: percentSolved,
-                          strokeWidth: ringStroke,
+                        CustomPaint(
+                          size: const Size(circleSize, circleSize),
+                          painter: MultiSegmentProgressPainter(
+                            physicsPercent: physicsPct,
+                            chemistryPercent: chemistryPct,
+                            mathsPercent: mathsPct,
+                            totalPercent: percentSolved,
+                            strokeWidth: ringStroke,
+                          ),
                         ),
-                      ),
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$solvedQuestions',
-                            style: const TextStyle(
-                                fontSize: 36, // reduced
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          ),
-                          Text(
-                            '/$totalQuestions',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Solved',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.green,
-                                fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: ["physics", "chemistry", "maths"].map((subject) {
-                    final countSolved = subjectSolved[subject] ?? 0;
-                    final countTotal = subjectTotals[subject] ?? 0;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4), // less
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 7),
-                            decoration: BoxDecoration(
-                              color: subjectColors[subject],
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              '$countSolved / $countTotal',
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '$solvedQuestions',
                               style: const TextStyle(
-                                fontSize: 12,
+                                fontSize: 36,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: Colors.white,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            subject[0].toUpperCase() + subject.substring(1),
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 7),
-          // Right: Badge/Rank box
-          Container(
-            width: 90,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161b22),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey[700]!),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min, // <--- this
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Badges',
-                    style: TextStyle(color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                const Text('1',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 7),
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    color: Colors.green.shade200,
-                    image: const DecorationImage(
-                      image: AssetImage('assets/images/50_days_badge.png'),
-                      fit: BoxFit.contain,
+                            Text(
+                              '/$totalQuestions',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Solved',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 7),
-                const Text('Most Recent',
-                    style: TextStyle(color: Colors.white70, fontSize: 10)),
-                const SizedBox(height: 3),
-                const Text(
-                  '50 Days Badge',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 12),
+
+                  // Wrap avoids overflow
+                  Flexible(
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: ["physics", "chemistry", "maths"].map((subject) {
+                        final countSolved = subjectSolved[subject] ?? 0;
+                        final countTotal = subjectTotals[subject] ?? 0;
+
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 2,
+                                horizontal: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: subjectColors[subject],
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Text(
+                                '$countSolved / $countTotal',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              subject[0].toUpperCase() + subject.substring(1),
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
                   ),
-                ),
-                const Text(
-                  '2025',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 6),
+
+          // ===== RIGHT: Badge + Rank (now on right) =====
+          Expanded(
+            flex: 1,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              color: Colors.transparent,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Badge image (large and centered)
+                  Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.transparent,
+                      image: const DecorationImage(
+                        image: AssetImage('assets/50_days_badge.png'),
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 10),
+
+                  // Rank name centered below
+                  Text(
+                    getRankName(solvedQuestions),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+
+                  const Text(
+                    'Rank',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -479,7 +512,6 @@ Widget _buildLeetCodeStyleStatus() {
     ),
   );
 }
-
 
 
   Widget _buildFeatureCardsGrid(BuildContext context) {

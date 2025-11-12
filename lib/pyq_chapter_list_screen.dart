@@ -425,19 +425,12 @@ class _PyqChapterListScreenState extends State<PyqChapterListScreen> {
           year2024Stats: '0 Qs',
           completionStats: '0/132 Qs'),
       Chapter(
-          name: 'p Block (G13-14)',
+          name: 'p Block',
           icon: Icons.filter_2,
           iconColor: Colors.indigo,
           year2025Stats: '4 Qs ↓',
           year2024Stats: '11 Qs',
           completionStats: '8/86 Qs'),
-      Chapter(
-          name: 'p Block (G15-18)',
-          icon: Icons.filter_3,
-          iconColor: Colors.purple,
-          year2025Stats: '9 Qs ↓',
-          year2024Stats: '13 Qs',
-          completionStats: '0/184 Qs'),
       Chapter(
           name: 'd & f Block',
           icon: Icons.dashboard,

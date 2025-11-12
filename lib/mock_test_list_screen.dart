@@ -1,146 +1,198 @@
-// lib/mock_test_list_screen.dart
-
 import 'package:flutter/material.dart';
 import 'mock_test_instructions_screen.dart';
 
 class MockTestListScreen extends StatelessWidget {
+  const MockTestListScreen({Key? key}) : super(key: key);
+
+  final List<Map<String, dynamic>> _mockTests = const [
+    {
+      'id': 1,
+      'title': 'JEE Main 2 April 2025 Shift 2',
+      'date': '2 Apr 2025',
+      'duration': '3 Hours',
+      'questions': 30, // 20 MCQ + 10 Integer (attempt any 5)
+      'pattern': '20 MCQs + 10 Integer Type (attempt 5)',
+      'status': 'New',
+    },
+    // Add more tests here if needed
+  ];
+
   @override
   Widget build(BuildContext context) {
-    // List of all available mock tests
-    final List<Map<String, dynamic>> mockTests = [
-      {
-        'id': 1,
-        'title': 'Mock Test 1',
-        'date': '25 Jan 2024',
-        'time': '10:00 AM',
-        'status': 'New',
-        'attempts': 0,
-      },
-      {
-        'id': 2,
-        'title': 'Mock Test 2',
-        'date': '26 Jan 2024',
-        'time': '10:00 AM',
-        'status': 'New',
-        'attempts': 0,
-      },
-      {
-        'id': 3,
-        'title': 'Mock Test 3',
-        'date': '27 Jan 2024',
-        'time': '10:00 AM',
-        'status': 'New',
-        'attempts': 0,
-      },
-      {
-        'id': 4,
-        'title': 'Mock Test 4',
-        'date': '28 Jan 2024',
-        'time': '10:00 AM',
-        'status': 'New',
-        'attempts': 0,
-      },
-      {
-        'id': 5,
-        'title': 'Mock Test 5',
-        'date': '29 Jan 2024',
-        'time': '10:00 AM',
-        'status': 'New',
-        'attempts': 0,
-      },
-    ];
-
     return Scaffold(
-      backgroundColor: Color(0xFF161b22),
+      backgroundColor: const Color(0xFF161b22),
       appBar: AppBar(
-        title: Text("Mock Tests", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Color(0xFF161b22),
+        title: const Text('Mock Tests', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+        backgroundColor: const Color(0xFF161b22),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: ListView.builder(
-        padding: EdgeInsets.all(20),
-        itemCount: mockTests.length,
-        itemBuilder: (context, idx) {
-          final test = mockTests[idx];
-          Color statusColor;
-          
-          switch (test['status']) {
-            case 'Attempted':
-              statusColor = Colors.green;
-              break;
-            case 'Missed':
-              statusColor = Colors.orange;
-              break;
-            default:
-              statusColor = Color(0xFF9C27B0); // purple for "New"
-          }
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: ListView.separated(
+          itemCount: _mockTests.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 20),
+          itemBuilder: (context, index) {
+            final test = _mockTests[index];
+            return _buildMockTestCard(context, test);
+          },
+        ),
+      ),
+    );
+  }
 
-          return GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => MockTestInstructionsPage(
-                    title: test['title'],
-                    testId: test['id'],
-                  )));
-            },
-            child: Container(
-              margin: EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: Colors.grey[900]!,
-                  width: 1,
-                ),
+  Widget _buildMockTestCard(BuildContext context, Map<String, dynamic> testData) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MockTestInstructionsPage(
+              title: testData['title'],
+              testId: testData['id'],
+            ),
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFFF9800).withOpacity(0.5),
+            width: 2,
+          ),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTitleRow(testData),
+            const SizedBox(height: 12),
+            _buildInfoRow(testData),
+            const SizedBox(height: 12),
+            _buildStartButton(context, testData),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitleRow(Map<String, dynamic> testData) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            testData['title'],
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFF9C27B0),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            testData['status'],
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(Map<String, dynamic> testData) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2E35),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          _buildDetailItem('📅', testData['date']),
+          _verticalDivider(),
+          _buildDetailItem('⏰', testData['duration']),
+          _verticalDivider(),
+          _buildDetailItem('❓', '${testData['questions']} Questions'),
+        ],
+      ),
+    );
+  }
+
+  Widget _verticalDivider() {
+    return Container(height: 20, width: 1, color: Colors.white12);
+  }
+
+  Widget _buildDetailItem(String icon, String label) {
+    return Expanded(
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
               ),
-              child: ListTile(
-                title: Row(
-                  children: [
-                    Text(test['title'],
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: Colors.white,
-                        )),
-                    SizedBox(width: 8),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        test['status'],
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                subtitle: Padding(
-                  padding: EdgeInsets.only(top: 3),
-                  child: Row(
-                    children: [
-                      Text('🧑‍💻 ${test['attempts']} Attempts',
-                          style: TextStyle(color: Colors.white70, fontSize: 13)),
-                      SizedBox(width: 16),
-                      Text('📅 ${test['date']} at ${test['time']}',
-                          style: TextStyle(color: Colors.white38, fontSize: 13)),
-                    ],
-                  ),
-                ),
-                trailing: Icon(Icons.arrow_forward_ios, color: Color(0xFF9C27B0)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStartButton(BuildContext context, Map<String, dynamic> testData) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MockTestInstructionsPage(
+                title: testData['title'],
+                testId: testData['id'],
               ),
             ),
           );
         },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF9C27B0),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: const Text(
+          '🚀 Start Test',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
+        ),
       ),
     );
   }

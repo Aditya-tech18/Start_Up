@@ -1,4 +1,4 @@
-package com.example.saas_new
+package com.example.prepixo
 
 import io.flutter.embedding.android.FlutterActivity
 

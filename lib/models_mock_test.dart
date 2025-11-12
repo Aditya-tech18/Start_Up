@@ -25,55 +25,47 @@ class Question {
     required this.examShift,
   });
 
-  bool get isIntegerType => optionsList == null;
-  bool get isMCQType => optionsList != null;
+  bool get isIntegerType => optionsList == null || optionsList!.isEmpty;
+  bool get isMCQType => optionsList != null && optionsList!.isNotEmpty;
 
-  factory Question.fromJson(Map<String, dynamic> json) {
-    Map<String, String>? parsedOptions;
-    final optionsList = json['options_list'];
-    if (optionsList == null) {
-      parsedOptions = null;
-    } else if (optionsList is String) {
-      try {
-        String fixed = optionsList.trim();
-        // Remove double-encoding if present
-        if (fixed.startsWith('"') && fixed.endsWith('"')) {
-          fixed = fixed.substring(1, fixed.length - 1);
-        }
-        // Fix wrongly escaped quotes/backslashes
-        fixed = fixed.replaceAll(r'\"', '"').replaceAll(r'\\', '\\');
-        parsedOptions = Map<String, dynamic>.from(jsonDecode(fixed))
-            .map((k, v) => MapEntry(k.toString(), v.toString()));
-      } catch (e) {
-        try {
-          parsedOptions = Map<String, dynamic>.from(jsonDecode(optionsList))
-              .map((k, v) => MapEntry(k.toString(), v.toString()));
-        } catch (err) {
-          parsedOptions = null;
-        }
-      }
-    } else if (optionsList is Map) {
-      parsedOptions = (optionsList as Map).map((k, v) => MapEntry(k.toString(), v.toString()));
-    } else {
+factory Question.fromJson(Map<String, dynamic> json) {
+  Map<String, String>? parsedOptions;
+  final optionsList = json['options_list'];
+  if (optionsList == null) {
+    parsedOptions = null;
+  } else if (optionsList is String) {
+    // No post-processing needed!
+    try {
+      parsedOptions = Map<String, dynamic>.from(jsonDecode(optionsList))
+        .map((k, v) => MapEntry(k.toString(), v.toString()));
+    } catch (err) {
       parsedOptions = null;
     }
-    return Question(
-      id: json['id'] as int,
-      subject: json['subject'] as String,
-      chapter: json['chapter'] as String,
-      questionText: json['question_text'] as String,
-      optionsList: parsedOptions,
-      correctAnswer: json['correct_answer'] as String,
-      solution: json['solution'] as String? ?? '',
-      questionImageUrl: json['question_image_url'] as String?,
-      examYear: json['exam_year'] as int? ?? 0,
-      examShift: json['exam_shift'] as String? ?? '',
-    );
+  } else if (optionsList is Map) {
+    parsedOptions = (optionsList as Map).map((k, v) => MapEntry(k.toString(), v.toString()));
+  } else {
+    parsedOptions = null;
   }
+  return Question(
+    id: json['id'] as int,
+    subject: json['subject'] as String,
+    chapter: json['chapter'] as String,
+    questionText: json['question_text'] as String,
+    optionsList: parsedOptions,
+    correctAnswer: json['correct_answer'] as String,
+    solution: json['solution'] as String? ?? '',
+    questionImageUrl: json['question_image_url'] as String?,
+    examYear: json['exam_year'] as int? ?? 0,
+    examShift: json['exam_shift'] as String? ?? '',
+  );
 }
 
+
+}
+
+// Wrap question with section info for mock test
 class MockTestQuestion {
-  final int globalQuestionNumber; // 1-90
+  final int globalQuestionNumber; // e.g. 1-90 in complete mock
   final Question question;
   final String section; // 'A' or 'B'
   final String subject; // 'physics', 'chemistry', 'maths'
@@ -86,6 +78,7 @@ class MockTestQuestion {
   });
 }
 
+// User's answer state for a question inside the mock test session
 class QuestionAnswer {
   final int questionId;
   final String subject;
@@ -132,6 +125,7 @@ class QuestionAnswer {
   }
 }
 
+// State holder for current mock test session
 class MockTestState {
   final List<MockTestQuestion> allQuestions;
   final Map<int, QuestionAnswer> answers; // key: globalQuestionNumber
