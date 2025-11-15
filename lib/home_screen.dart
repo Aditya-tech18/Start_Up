@@ -201,8 +201,7 @@ Widget build(BuildContext context) {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return Scaffold(
           body: Center(
-            child:
-                CircularProgressIndicator(color: const Color(0xFFE57C23)),
+            child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
           ),
         );
       }
@@ -218,8 +217,7 @@ Widget build(BuildContext context) {
         }
         return Scaffold(
           body: Center(
-            child:
-                CircularProgressIndicator(color: const Color(0xFFE57C23)),
+            child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
           ),
         );
       }
@@ -232,15 +230,34 @@ Widget build(BuildContext context) {
       if (isLoading) {
         return Scaffold(
           body: Center(
-            child:
-                CircularProgressIndicator(color: const Color(0xFFE57C23)),
+            child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
           ),
         );
       }
 
       return Scaffold(
-appBar: AppBar(toolbarHeight: 0, elevation: 0, backgroundColor: Colors.transparent),
-
+        appBar: AppBar(
+          toolbarHeight: 50,
+          elevation: 0,
+          backgroundColor: const Color(0xFF0A0E21),
+          title: const Text('Home'),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Logout',
+              onPressed: () async {
+                await Supabase.instance.client.auth.signOut();
+                if (mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/login',
+                    (route) => false,
+                  );
+                }
+              },
+            ),
+          ],
+        ),
         body: Stack(
           children: [
             Positioned.fill(
@@ -251,51 +268,49 @@ appBar: AppBar(toolbarHeight: 0, elevation: 0, backgroundColor: Colors.transpare
                 colorBlendMode: BlendMode.darken,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text(
-                          '"The best way to predict the future is to create it."',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Color.fromARGB(255, 176, 137, 39),
-                            fontStyle: FontStyle.italic,
-                            fontWeight: FontWeight.w500,
-                          ),
+            SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 60, top: 0, left: 14, right: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10.0),
+                      child: Text(
+                        '"The best way to predict the future is to create it."',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Color.fromARGB(255, 176, 137, 39),
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    _buildLeetCodeStyleStatus(),
-                    const SizedBox(height: 36),
-                    Text('Submissions in the past year',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
-                    const SizedBox(height: 8),
-                    ActivityHeatmap(activityMap: activityMap),
-                    Text('Explore Core Features',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
-                    const SizedBox(height: 10),
-                    _buildFeatureCardsGrid(context),
-
-                    const SizedBox(height: 20),
-                    Text('Community Feed',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
-                    const SizedBox(height: 10),
-                    _buildActivityFeedItem(context, 'Welcome! Start your first challenge.'),
-                    _buildActivityFeedItem(context, 'Connect with your first mentor!'),
-                    const SizedBox(height: 20),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildLeetCodeStyleStatus(),
+                  const SizedBox(height: 40),
+                  Text('Submissions in the past year',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 12),
+                  ActivityHeatmap(activityMap: activityMap),
+                  const SizedBox(height: 28),
+                  Text('Explore Core Features',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 14),
+                  _buildFeatureCardsGrid(context),
+                  const SizedBox(height: 28),
+                  Text('Community Feed',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 12),
+                  _buildActivityFeedItem(context, 'Welcome! Start your first challenge.'),
+                  _buildActivityFeedItem(context, 'Connect with your first mentor!'),
+                  const SizedBox(height: 40),
+                ],
               ),
             ),
           ],
@@ -306,9 +321,10 @@ appBar: AppBar(toolbarHeight: 0, elevation: 0, backgroundColor: Colors.transpare
 }
 
 
+
 Widget _buildLeetCodeStyleStatus() {
-  const double circleSize = 92;
-  const double ringStroke = 10;
+  const double circleSize = 105;
+  const double ringStroke = 8;
 
   final double percentSolved =
       totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
@@ -318,12 +334,11 @@ Widget _buildLeetCodeStyleStatus() {
   final double mathsPct = (subjectSolved["maths"] ?? 0) / safeSolved;
 
   const Map<String, Color> subjectColors = {
-    "physics": Colors.cyan,
-    "chemistry": Colors.deepOrange,
-    "maths": Colors.purple,
+    "physics": Color(0xFF12D6E8),
+    "chemistry": Color(0xFFFF6B3D),
+    "maths": Color(0xFF7D3EFF),
   };
 
-  // === Rank calculation based on solved count ===
   String getRankName(int solved) {
     if (solved < 50) return "Recruit";
     if (solved < 100) return "Cadet";
@@ -333,178 +348,229 @@ Widget _buildLeetCodeStyleStatus() {
     return "Marshal";
   }
 
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-    decoration: BoxDecoration(
-      color: const Color(0xFF161b22),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: IntrinsicHeight(
+  return SingleChildScrollView(
+    scrollDirection: Axis.vertical,
+    physics: const NeverScrollableScrollPhysics(),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0A0A0C), Color(0xFF0F0F12)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.06),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF6B3D).withOpacity(0.2),
+            blurRadius: 12,
+            spreadRadius: 0.5,
+            offset: const Offset(0, 5),
+          ),
+          BoxShadow(
+            color: const Color(0xFF7D3EFF).withOpacity(0.12),
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // ===== LEFT: Solved Circle + Subjects =====
+          // LEFT: Circle + Boxes
           Expanded(
             flex: 1,
-            child: Transform.translate(
-              offset: const Offset(-8, 0), // slight left shift for balance
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: circleSize,
-                    height: circleSize,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: circleSize,
-                          height: circleSize,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.grey[900],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Progress Circle
+                SizedBox(
+                  width: circleSize,
+                  height: circleSize,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: circleSize,
+                        height: circleSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.grey[850]!,
+                              Colors.grey[900]!,
+                            ],
+                            stops: const [0.6, 1.0],
                           ),
-                        ),
-                        CustomPaint(
-                          size: const Size(circleSize, circleSize),
-                          painter: MultiSegmentProgressPainter(
-                            physicsPercent: physicsPct,
-                            chemistryPercent: chemistryPct,
-                            mathsPercent: mathsPct,
-                            totalPercent: percentSolved,
-                            strokeWidth: ringStroke,
-                          ),
-                        ),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '$solvedQuestions',
-                              style: const TextStyle(
-                                fontSize: 36,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              '/$totalQuestions',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'Solved',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.green,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.5),
+                              blurRadius: 10,
+                              spreadRadius: 1.5,
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Wrap avoids overflow
-                  Flexible(
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: ["physics", "chemistry", "maths"].map((subject) {
-                        final countSolved = subjectSolved[subject] ?? 0;
-                        final countTotal = subjectTotals[subject] ?? 0;
-
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 2,
-                                horizontal: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: subjectColors[subject],
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              child: Text(
-                                '$countSolved / $countTotal',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
+                      ),
+                      CustomPaint(
+                        size: Size(circleSize, circleSize),
+                        painter: MultiSegmentProgressPainter(
+                          physicsPercent: physicsPct,
+                          chemistryPercent: chemistryPct,
+                          mathsPercent: mathsPct,
+                          totalPercent: percentSolved,
+                          strokeWidth: ringStroke,
+                        ),
+                      ),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '$solvedQuestions',
+                            style: const TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFEDEDED),
+                              letterSpacing: -0.5,
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              subject[0].toUpperCase() + subject.substring(1),
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
+                          ),
+                          Text(
+                            '/$totalQuestions',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFA9A9A9),
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
+                          ),
+                          const SizedBox(height: 1),
+                          const Text(
+                            'Solved',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: Color(0xFF00C878),
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 6),
-
-          // ===== RIGHT: Badge + Rank (now on right) =====
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              color: Colors.transparent,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Badge image (large and centered)
-                  Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: Colors.transparent,
-                      image: const DecorationImage(
-                        image: AssetImage('assets/50_days_badge.png'),
-                        fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 10),
+                // Top Row: Physics + Chemistry - EQUAL WIDTH
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: _buildRectBox(
+                        subject: "Physics",
+                        solved: subjectSolved["physics"] ?? 0,
+                        total: subjectTotals["physics"] ?? 0,
+                        color: subjectColors["physics"]!,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Rank name centered below
-                  Text(
-                    getRankName(solvedQuestions),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildRectBox(
+                        subject: "Chemistry",
+                        solved: subjectSolved["chemistry"] ?? 0,
+                        total: subjectTotals["chemistry"] ?? 0,
+                        color: subjectColors["chemistry"]!,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
+                  ],
+                ),
+                const SizedBox(height: 9),
+                // Bottom Row: Maths (CENTERED, SMALLER)
+                Center(
+                  child: SizedBox(
+                    width: 120,
+                    child: _buildRectBox(
+                      subject: "Maths",
+                      solved: subjectSolved["maths"] ?? 0,
+                      total: subjectTotals["maths"] ?? 0,
+                      color: subjectColors["maths"]!,
+                    ),
                   ),
-                  const SizedBox(height: 4),
-
-                  const Text(
-                    'Rank',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                    textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          // RIGHT: Badge + Rank
+          Expanded(
+            flex: 1,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Badge with GOLDEN GLOW
+                Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    color: Colors.black.withOpacity(0.4),
+                    border: Border.all(
+                      color: Colors.black.withOpacity(0.6),
+                      width: 2,
+                    ),
+                    image: const DecorationImage(
+                      image: AssetImage('assets/50_days_badge.png'),
+                      fit: BoxFit.cover,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFFD700).withOpacity(0.75),
+                        blurRadius: 24,
+                        spreadRadius: 4,
+                        offset: const Offset(0, 0),
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFFFFD700).withOpacity(0.45),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 0),
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFFFFED4E).withOpacity(0.35),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 0),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+                // Rank Text
+                Text(
+                  getRankName(solvedQuestions),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    color: Color(0xFFEDEDED),
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                // Rank Label
+                Text(
+                  'Rank',
+                  style: TextStyle(
+                    color: Color(0xFFA9A9A9).withOpacity(0.85),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -513,6 +579,55 @@ Widget _buildLeetCodeStyleStatus() {
   );
 }
 
+// Rectangular Box Helper
+Widget _buildRectBox({
+  required String subject,
+  required int solved,
+  required int total,
+  required Color color,
+}) {
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.4),
+              blurRadius: 8,
+              spreadRadius: 0.5,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Text(
+          '$solved / $total',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: Colors.black,
+            letterSpacing: -0.3,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        subject,
+        style: const TextStyle(
+          color: Color(0xFFA9A9A9),
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
+      ),
+    ],
+  );
+}
 
   Widget _buildFeatureCardsGrid(BuildContext context) {
     final List<Map<String, dynamic>> features = [

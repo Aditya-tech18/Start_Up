@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform; 
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -68,80 +71,89 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// 🔴 NEW: Handle Forgot Password
-  Future<void> _handleForgotPassword() async {
-    if (_emailController.text.trim().isEmpty) {
+
+Future<void> _handleForgotPassword() async {
+  if (_emailController.text.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please enter your email address'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 3),
+      ),
+    );
+    return;
+  }
+
+  if (_validateEmail(_emailController.text.trim()) != null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please enter a valid email address'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 3),
+      ),
+    );
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    final email = _emailController.text.trim();
+
+    // ----------------------------
+    // TEMPORARY: Hard-coded redirect for testing
+    // Replace back with dynamic logic after verification if needed
+    // ----------------------------
+    final redirect = 'https://prepixo.netlify.app/reset-password.html';
+    debugPrint('DEBUG resetPasswordForEmail -> redirect: $redirect, email: $email');
+
+    await Supabase.instance.client.auth.resetPasswordForEmail(
+      email,
+      redirectTo: redirect,
+    );
+
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter your email address'),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 3),
+          content: Text('✅ Password reset link sent! Check your email.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 4),
         ),
       );
-      return;
+      _passwordController.clear();
     }
-
-    if (_validateEmail(_emailController.text.trim()) != null) {
+  } on AuthException catch (e) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid email address'),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 3),
+        SnackBar(
+          content: Text(_getReadableError(e.message)),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
-      return;
     }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final email = _emailController.text.trim();
-      
-      await Supabase.instance.client.auth.resetPasswordForEmail(
-        email,
-        redirectTo: 'prepixo://reset-password', // ✅ Update with your app scheme
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
       );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Password reset link sent! Check your email.'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 4),
-          ),
-        );
-        _passwordController.clear();
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_getReadableError(e.message)),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-      debugPrint('Forgot password error: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    }
+    debugPrint('Forgot password error: $e');
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
+}
+
 
   /// Handle authentication (Sign Up or Login)
   Future<void> _handleAuth() async {

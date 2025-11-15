@@ -235,53 +235,53 @@ class _MockTestPaperScreenState extends State<MockTestPaperScreen> {
     });
   }
 
-  void _toggleMarkForReview() {
-    setState(() {
-      _isMarkedForReview = !_isMarkedForReview;
-      if (_answers[_currentSubject]![_currentSection]![_currentQuestionIndex] != null) {
-        _answers[_currentSubject]![_currentSection]![_currentQuestionIndex]!
-            .isMarkedForReview = _isMarkedForReview;
-      }
-    });
-  }
-
-  void _saveCurrentAnswer() {
-    String? selectedAnswer;
-    if (_currentSection == 'A') {
-      selectedAnswer = _selectedAnswers[_currentSubject]![_currentSection]![_currentQuestionIndex];
-    } else {
-      selectedAnswer = _userAnswer.isNotEmpty ? _userAnswer : null;
-    }
-    if (selectedAnswer == null || selectedAnswer.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Please select/enter an answer first!'),
-          duration: Duration(seconds: 2),
-        ),
+void _toggleMarkForReview() {
+  setState(() {
+    _isMarkedForReview = !_isMarkedForReview;
+    // This part ensures answer object always exists if marked for review
+    if (_answers[_currentSubject]![_currentSection]![_currentQuestionIndex] == null) {
+      _answers[_currentSubject]![_currentSection]![_currentQuestionIndex] = QuestionAnswer(
+        questionId: _currentQuestionIndex,
+        subject: _currentSubject,
+        section: _currentSection,
+        userAnswer: '', // No answer
+        isMarkedForReview: _isMarkedForReview,
+        marksObtained: 0,
+        answeredAt: null,
       );
-      return;
+    } else {
+      _answers[_currentSubject]![_currentSection]![_currentQuestionIndex]!
+          .isMarkedForReview = _isMarkedForReview;
     }
-    final answerObj = QuestionAnswer(
-      questionId: _currentQuestionIndex,
-      subject: _currentSubject,
-      section: _currentSection,
-      userAnswer: selectedAnswer,
-      correctAnswer: '',
-      isMarkedForReview: _isMarkedForReview,
-      marksObtained: 0,
-      answeredAt: DateTime.now(),
-    );
-    setState(() {
-      _answers[_currentSubject]![_currentSection]![_currentQuestionIndex] = answerObj;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('✅ Answer saved: $selectedAnswer'),
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
+  });
+}
 
+
+void _saveCurrentAnswer() {
+  String? selectedAnswer;
+  if (_currentSection == 'A') {
+    selectedAnswer = _selectedAnswers[_currentSubject]![_currentSection]![_currentQuestionIndex];
+  } else {
+    selectedAnswer = _userAnswer.isNotEmpty ? _userAnswer : null;
+  }
+  if (selectedAnswer == null || selectedAnswer.isEmpty) {
+    // Simply return without showing any notification
+    return;
+  }
+  final answerObj = QuestionAnswer(
+    questionId: _currentQuestionIndex,
+    subject: _currentSubject,
+    section: _currentSection,
+    userAnswer: selectedAnswer,
+    correctAnswer: '',
+    isMarkedForReview: _isMarkedForReview,
+    marksObtained: 0,
+    answeredAt: DateTime.now(),
+  );
+  setState(() {
+    _answers[_currentSubject]![_currentSection]![_currentQuestionIndex] = answerObj;
+  });
+}
   void _selectIntegerQuestion(int index) {
     final selected = _sectionBSelected[_currentSubject]!;
     if (selected.length < 5 || selected.contains(index)) {
@@ -946,6 +946,13 @@ Widget _buildBottomNavigationBar(int totalQuestions) {
   final isLastQuestion = _currentQuestionIndex == totalQuestions - 1;
   final isFirstQuestion = _currentQuestionIndex == 0;
 
+  TextStyle labelStyle = const TextStyle(
+    fontSize: 15, // Reduced font size for better fit
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+    overflow: TextOverflow.ellipsis,
+  );
+
   return SafeArea(
     child: Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
@@ -958,12 +965,15 @@ Widget _buildBottomNavigationBar(int totalQuestions) {
           Expanded(
             child: ElevatedButton.icon(
               onPressed: !isFirstQuestion ? _previousQuestion : null,
-              icon: const Icon(Icons.arrow_back),
-              label: const Text('Previous', maxLines: 1),
+              icon: const Icon(Icons.arrow_back, size: 20),
+              label: FittedBox(
+                child: Text('Previous', maxLines: 1, style: labelStyle),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.grey[800],
                 disabledBackgroundColor: Colors.grey[900],
                 minimumSize: const Size(0, 52),
+                padding: const EdgeInsets.symmetric(horizontal: 2),
               ),
             ),
           ),
@@ -971,11 +981,17 @@ Widget _buildBottomNavigationBar(int totalQuestions) {
           Expanded(
             child: ElevatedButton.icon(
               onPressed: _toggleMarkForReview,
-              icon: Icon(_isMarkedForReview ? Icons.bookmark : Icons.bookmark_border),
-              label: const Text('Mark', maxLines: 1),
+              icon: Icon(
+                _isMarkedForReview ? Icons.bookmark : Icons.bookmark_border,
+                size: 20,
+              ),
+              label: FittedBox(
+                child: Text('Mark', maxLines: 1, style: labelStyle),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
                 minimumSize: const Size(0, 52),
+                padding: const EdgeInsets.symmetric(horizontal: 2),
               ),
             ),
           ),
@@ -987,11 +1003,21 @@ Widget _buildBottomNavigationBar(int totalQuestions) {
                 if (!isLastQuestion) _nextQuestion();
                 else _showSubmitDialog();
               },
-              icon: Icon(isLastQuestion ? Icons.check_circle : Icons.save),
-              label: Text(isLastQuestion ? 'Submit' : 'Save & Next', maxLines: 1),
+              icon: Icon(
+                isLastQuestion ? Icons.check_circle : Icons.save,
+                size: 20,
+              ),
+              label: FittedBox(
+                child: Text(
+                  isLastQuestion ? 'Submit' : 'Save & Next',
+                  maxLines: 1,
+                  style: labelStyle,
+                ),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: isLastQuestion ? Colors.red : Colors.green,
                 minimumSize: const Size(0, 52),
+                padding: const EdgeInsets.symmetric(horizontal: 2),
               ),
             ),
           ),
@@ -1001,23 +1027,16 @@ Widget _buildBottomNavigationBar(int totalQuestions) {
   );
 }
 
-
-  Color _getQuestionTileColor(int index) {
-    final answer = _answers[_currentSubject]![_currentSection]![index];
-    if (answer == null) {
-      return Colors.grey[700]!;
-    }
-    if (answer.isAnswered && answer.isMarkedForReview) {
-      return Colors.yellowAccent;
-    }
-    if (answer.isAnswered) {
-      return Colors.green;
-    }
-    if (answer.isMarkedForReview) {
-      return Colors.yellow;
-    }
-    return Colors.grey[700]!;
+Color _getQuestionTileColor(int index) {
+  final answer = _answers[_currentSubject]![_currentSection]![index];
+  if (answer != null && answer.isMarkedForReview) {
+    return Colors.purple;
   }
+  if (answer != null && answer.isAnswered) {
+    return Colors.green;
+  }
+  return Colors.grey[700]!;
+}
 
   int _getAttemptedCount() {
     int count = 0;
@@ -1034,8 +1053,6 @@ Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.
   }
   List<InlineSpan> spans = [];
   int currentIndex = 0;
-
-  // Regex to match block math $$...$$
   final blockMathRegex = RegExp(r'\$\$(.+?)\$\$', dotAll: true);
   final blockMatches = blockMathRegex.allMatches(text).toList();
   List<int> blockMathPositions = [];
@@ -1043,13 +1060,15 @@ Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.
     blockMathPositions.add(match.start);
     blockMathPositions.add(match.end);
   }
-
   while (currentIndex < text.length) {
     bool isBlockMath = false;
     for (var match in blockMatches) {
       if (currentIndex == match.start) {
         isBlockMath = true;
         String mathContent = match.group(1)!.trim();
+        if (mathContent.contains('\\\\')) {
+          mathContent = mathContent.replaceAll('\\\\', '\\');
+        }
         try {
           spans.add(WidgetSpan(
             alignment: PlaceholderAlignment.middle,
@@ -1058,8 +1077,6 @@ Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.
               child: Math.tex(
                 mathContent,
                 textStyle: TextStyle(fontSize: fontSize + 2, color: color),
-                onErrorFallback: (_) => Text('[Math Error]',
-                  style: TextStyle(fontSize: fontSize - 2, color: Colors.red)),
               ),
             ),
           ));
@@ -1073,10 +1090,8 @@ Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.
       }
     }
     if (isBlockMath) continue;
-
     int nextDollar = text.indexOf(r'$', currentIndex);
     if (nextDollar == -1) {
-      // If no inline math ahead, add the rest as text.
       if (currentIndex < text.length) {
         spans.add(TextSpan(
             text: text.substring(currentIndex),
@@ -1089,7 +1104,6 @@ Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.
           text: text.substring(currentIndex, nextDollar),
           style: TextStyle(fontSize: fontSize, color: color)));
     }
-    // Ensure we skip dollar signs inside $$...$$ math blocks
     bool skipThisDollar = false;
     for (int pos in blockMathPositions) {
       if (nextDollar == pos || nextDollar == pos - 1) {
@@ -1101,7 +1115,6 @@ Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.
       currentIndex = nextDollar + 1;
       continue;
     }
-
     int closingDollar = text.indexOf(r'$', nextDollar + 1);
     if (closingDollar == -1) {
       spans.add(TextSpan(
@@ -1111,6 +1124,9 @@ Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.
     }
     String mathContent = text.substring(nextDollar + 1, closingDollar).trim();
     if (mathContent.isNotEmpty) {
+      if (mathContent.contains('\\\\')) {
+        mathContent = mathContent.replaceAll('\\\\', '\\');
+      }
       try {
         spans.add(WidgetSpan(
           alignment: PlaceholderAlignment.middle,
@@ -1119,8 +1135,6 @@ Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.
             child: Math.tex(
               mathContent,
               textStyle: TextStyle(fontSize: fontSize, color: color),
-              onErrorFallback: (_) => Text('[Math Error]',
-                  style: TextStyle(fontSize: fontSize - 2, color: Colors.red)),
             ),
           ),
         ));
@@ -1141,6 +1155,7 @@ Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.
     overflow: TextOverflow.visible,
   );
 }
+
 
 }
 

@@ -5,11 +5,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class QuestionListScreen extends StatefulWidget {
   final String chapterName;
-  const QuestionListScreen({Key? key, required this.chapterName}) : super(key: key);
+  final int? selectedYear; // <-- add this line
+
+  const QuestionListScreen({
+    Key? key,
+    required this.chapterName,
+    this.selectedYear,      // <-- add this line
+  }) : super(key: key);
 
   @override
   State<QuestionListScreen> createState() => _QuestionListScreenState();
 }
+
 
 class _QuestionListScreenState extends State<QuestionListScreen> {
   List<Map<String, dynamic>> _questions = [];
@@ -25,25 +32,31 @@ class _QuestionListScreenState extends State<QuestionListScreen> {
     _fetchQuestions();
   }
 
-  Future<void> _fetchQuestions() async {
-    setState(() => _loading = true);
-    final response = await Supabase.instance.client
-        .from('questions')
-        .select()
-        .eq('chapter', widget.chapterName);
+Future<void> _fetchQuestions() async {
+  setState(() => _loading = true);
+  final response = await Supabase.instance.client
+      .from('questions')
+      .select()
+      .eq('chapter', widget.chapterName);
 
-    List<Map<String, dynamic>> questions = List<Map<String, dynamic>>.from(response ?? []);
-    Set<int> years = questions.map((q) => q['exam_year'] as int).toSet();
-    int latestYear = years.isNotEmpty ? years.reduce((a, b) => a > b ? a : b) : DateTime.now().year;
+  List<Map<String, dynamic>> questions = List<Map<String, dynamic>>.from(response ?? []);
+  Set<int> years = questions.map((q) => q['exam_year'] as int).toSet();
+  int latestYear = years.isNotEmpty ? years.reduce((a, b) => a > b ? a : b) : DateTime.now().year;
 
-    setState(() {
-      _questions = questions;
-      _years = years;
-      _selectedYear = latestYear;
-      _loading = false;
-    });
-    _applyFilters();
-  }
+  // Use widget.selectedYear if valid, otherwise default
+  int? initYear = (widget.selectedYear != null && years.contains(widget.selectedYear!))
+      ? widget.selectedYear
+      : (years.contains(latestYear) ? latestYear : (years.isNotEmpty ? years.first : null));
+
+  setState(() {
+    _questions = questions;
+    _years = years;
+    _selectedYear = initYear;
+    _loading = false;
+  });
+  _applyFilters();
+}
+
 
   void _applyFilters() {
     List<Map<String, dynamic>> filtered = _questions
