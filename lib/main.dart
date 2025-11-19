@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'splash_screen.dart';
 import 'login_screen.dart';
-import 'reset_password_screen.dart';
+import 'otp_verification_screen.dart';
 import 'exam_selection_screen.dart';
 import 'home_screen.dart';
 import 'subscription_screen.dart';
@@ -16,12 +16,10 @@ import 'models_mock_test.dart'; // Adjust if needed
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Supabase.initialize(
     url: 'https://pgvymttdvdlkcroqxsgn.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBndnltdHRkdmRsa2Nyb3F4c2duIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzOTEwMzMsImV4cCI6MjA3NDk2NzAzM30.lAaQEs2Mk6BGjIcP8zLkqkFxUDIKyDIT-9kTK5kPnq8',
   );
-
   runApp(const MyApp());
 }
 
@@ -55,11 +53,11 @@ class _MyAppState extends State<MyApp> {
         debugPrint('🔐 [MyApp] Auth Event: $event');
 
         if (event == AuthChangeEvent.passwordRecovery) {
-          debugPrint(
-              '✅ [MyApp] Password recovery detected - navigating to reset screen');
+          debugPrint('✅ [MyApp] Password recovery detected - navigating to OTP screen');
           _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-            '/reset_password',
+            '/otp_verification',
             (route) => route.isFirst,
+            arguments: data.session?.user.email, // Pass email for OTP
           );
         }
 
@@ -168,9 +166,8 @@ class _MyAppState extends State<MyApp> {
       navigatorKey: _navigatorKey,
       initialRoute: '/',
       routes: {
-        '/': (context) => const SplashScreen(), // Handles session check and routing
+        '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
-        '/reset_password': (context) => const ResetPasswordScreen(),
         '/exam_selection': (context) => const ExamSelectionScreen(),
         '/home': (context) => const HomeScreen(),
         '/subscription': (context) => const SubscriptionScreen(),
@@ -182,6 +179,13 @@ class _MyAppState extends State<MyApp> {
       },
       onGenerateRoute: (settings) {
         debugPrint('🔗 [Route] Generated route: ${settings.name}');
+if (settings.name == '/otp_verification') {
+  return MaterialPageRoute(
+    builder: (context) => const OtpVerificationScreen(), // ← NO email param!
+    settings: settings, // ← so the arguments are passed
+  );
+}
+        // Add similar dynamic routing for other screens needing arguments
         return null;
       },
       onUnknownRoute: (settings) {

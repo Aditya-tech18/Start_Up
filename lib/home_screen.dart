@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:saas_new/subscription_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
 import 'mock_test_list_screen.dart'; // Apne file path ke according adjust kar le
-
+import 'dart:ui';
 
 class MultiSegmentProgressPainter extends CustomPainter {
   final double physicsPercent;
@@ -58,6 +59,182 @@ class MultiSegmentProgressPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
+// Place this at the top of your file or with your constants
+const List<Map<String, dynamic>> rankStructure = [
+  {
+    'name': 'Recruit',
+    'min': 0,
+    'max': 49,
+    'badge': 'assets/Recruit.png',
+    'desc': 'Just starting training.'
+  },
+  {
+    'name': 'Cadet',
+    'min': 50,
+    'max': 99,
+    'badge': 'assets/Cadet.png', // Replace with actual badge if you have
+    'desc': 'Completed basic training; ready for action.'
+  },
+  {
+    'name': 'Sergeant',
+    'min': 100,
+    'max': 199,
+    'badge': 'assets/Sergaent.png',
+    'desc': 'Proven competence; leads small groups.'
+  },
+  {
+    'name': 'Commander',
+    'min': 200,
+    'max': 499,
+    'badge': 'assets/Commander.png',
+    'desc': 'High level of tactical skill and authority.'
+  },
+  {
+    'name': 'Major',
+    'min': 500,
+    'max': 999,
+    'badge': 'assets/Major.png',
+    'desc': 'Field expert; responsible for large operations.'
+  },
+  {
+    'name': 'Marshal',
+    'min': 1000,
+    'max': 100000, // just a max capx
+    'badge': 'assets/Marshal.png',
+    'desc': 'The highest rank; ultimate achievement and leadership.'
+  }
+];
+
+class RankStructureSheet extends StatelessWidget {
+  const RankStructureSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      builder: (_, controller) => Material(
+        color: const Color(0xFF181A22),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 44,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey[700],
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              '🌟 THE PATH TO MASTERY 🌟',
+              style: TextStyle(
+                fontSize: 20,
+                color: Color(0xFFFFD600),
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.separated(
+                controller: controller,
+                itemCount: rankStructure.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                itemBuilder: (ctx, i) {
+                  final rk = rankStructure[i];
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF23253A),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.amber.withOpacity(0.18),
+                        width: 1.1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF7D3EFF).withOpacity(0.10),
+                          blurRadius: 9,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ListTile(
+                      leading: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage(rk['badge']),
+                            fit: BoxFit.contain,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              Border.all(color: Colors.amber.withOpacity(0.23)),
+                          color: i == rankStructure.length - 1
+                              ? Colors.deepPurple[300]
+                              : Colors.blueGrey[800],
+                        ),
+                      ),
+                      title: Text(
+                        rk['name'],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontSize: 18,
+                          letterSpacing: 0.7,
+                        ),
+                      ),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          rk['desc'],
+                          style: const TextStyle(
+                            color: Colors.yellowAccent,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      trailing: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.check_circle,
+                              color: Colors.greenAccent, size: 19),
+                          Text(
+                            '${rk['min']}+ Qs',
+                            style: const TextStyle(
+                              color: Colors.amber,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.7,
+                            ),
+                          ),
+                        ],
+                      ),
+                      isThreeLine: true,
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+bool isLoading = true;
+bool hasAccess = false;
+bool isFeatureCardBusy = false;
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -89,6 +266,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _getUserIdAndFetchStats();
+    _checkSubscriptionStatus();
   }
 
   @override
@@ -126,47 +304,45 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     final solvedQRes = await client
-    .from('submissions')
-    .select('question_id, submitted_at')
-    .eq('user_id', userId ?? '');
+        .from('submissions')
+        .select('question_id, submitted_at')
+        .eq('user_id', userId ?? '');
 
-final solvedQuestionsSet = <int>{};
-if (solvedQRes != null && solvedQRes is List) {
-  for (var submission in solvedQRes) {
-    final qid = submission['question_id'];
-    if (qid != null) {
-      solvedQuestionsSet.add(qid as int);
+    final solvedQuestionsSet = <int>{};
+    if (solvedQRes != null && solvedQRes is List) {
+      for (var submission in solvedQRes) {
+        final qid = submission['question_id'];
+        if (qid != null) {
+          solvedQuestionsSet.add(qid as int);
+        }
+      }
     }
-  }
-}
-solvedQuestions = solvedQuestionsSet.length;
+    solvedQuestions = solvedQuestionsSet.length;
 
+    subjectSolved = {"physics": 0, "chemistry": 0, "maths": 0};
 
-subjectSolved = {"physics": 0, "chemistry": 0, "maths": 0};
-
-final solvedQuestionIdSet = <int>{};
-if (solvedQRes != null && (solvedQRes as List).isNotEmpty) {
-  // Make a set of unique question IDs solved by the user
-  for (var entry in (solvedQRes as List)) {
-    final qid = entry['question_id'];
-    if (qid != null) solvedQuestionIdSet.add(qid as int);
-  }
-}
+    final solvedQuestionIdSet = <int>{};
+    if (solvedQRes != null && (solvedQRes as List).isNotEmpty) {
+      // Make a set of unique question IDs solved by the user
+      for (var entry in (solvedQRes as List)) {
+        final qid = entry['question_id'];
+        if (qid != null) solvedQuestionIdSet.add(qid as int);
+      }
+    }
 // Query subject for these unique question IDs only
-if (solvedQuestionIdSet.isNotEmpty) {
-  final questionsRes = await client
-      .from('questions')
-      .select('id, subject')
-      .filter('id', 'in', solvedQuestionIdSet.toList());
-  // One question per subject per subjectSolved count
-  for (var row in (questionsRes as List)) {
-    final subj = (row['subject'] ?? '').toString().toLowerCase();
-    if (subjectSolved.containsKey(subj)) {
-      subjectSolved[subj] = (subjectSolved[subj] ?? 0) + 1;
+    if (solvedQuestionIdSet.isNotEmpty) {
+      final questionsRes = await client
+          .from('questions')
+          .select('id, subject')
+          .filter('id', 'in', solvedQuestionIdSet.toList());
+      // One question per subject per subjectSolved count
+      for (var row in (questionsRes as List)) {
+        final subj = (row['subject'] ?? '').toString().toLowerCase();
+        if (subjectSolved.containsKey(subj)) {
+          subjectSolved[subj] = (subjectSolved[subj] ?? 0) + 1;
+        }
+      }
     }
-  }
-}
-
 
     activityMap.clear();
     if (solvedQRes != null) {
@@ -183,563 +359,671 @@ if (solvedQuestionIdSet.isNotEmpty) {
     setState(() => isLoading = false);
   }
 
-
-String getRankName(int solved) {
-  if (solved < 50) return "Recruit";
-  if (solved < 100) return "Cadet";
-  if (solved < 200) return "Sergeant";
-  if (solved < 500) return "Commander";
-  if (solved < 1000) return "Major";
-  return "Marshal";
-}
-
-@override
-Widget build(BuildContext context) {
-  return StreamBuilder<AuthState>(
-    stream: Supabase.instance.client.auth.onAuthStateChange,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-          ),
-        );
+  Map<String, dynamic> getRankStatus(int solvedQuestions) {
+    for (final rank in rankStructure) {
+      if (solvedQuestions >= rank['min'] && solvedQuestions <= rank['max']) {
+        return rank;
       }
+    }
+    return rankStructure[0]; // default to lowest rank
+  }
 
-      final session = snapshot.data?.session;
+  Future<void> _checkSubscriptionStatus() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final email = Supabase.instance.client.auth.currentUser?.email;
+    if (userId == null || email == null) {
+      setState(() => hasAccess = false);
+      return;
+    }
+    final result = await Supabase.instance.client
+        .from('subscriptions')
+        .select('valid_until')
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (result != null && result['valid_until'] != null) {
+      final expiry = DateTime.tryParse(result['valid_until']);
+      setState(
+          () => hasAccess = expiry != null && expiry.isAfter(DateTime.now()));
+    } else {
+      setState(() => hasAccess = false);
+    }
+  }
 
-      if (session == null) {
-        if (!_hasNavigatedToLogin) {
-          _hasNavigatedToLogin = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacementNamed('/login');
-          });
+  Future<void> refreshSubscriptionStatus() async {
+    await _checkSubscriptionStatus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthState>(
+      stream: Supabase.instance.client.auth.onAuthStateChange,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
+            ),
+          );
         }
-        return Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-          ),
-        );
-      }
 
-      if (userId == null) {
-        userId = session.user.id;
-        _getUserIdAndFetchStats();
-      }
+        final session = snapshot.data?.session;
 
-      if (isLoading) {
-        return Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-          ),
-        );
-      }
-
-      return Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 50,
-          elevation: 0,
-          backgroundColor: const Color(0xFF0A0E21),
-          title: const Text('Home'),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              tooltip: 'Logout',
-              onPressed: () async {
-                await Supabase.instance.client.auth.signOut();
-                if (mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/login',
-                    (route) => false,
-                  );
-                }
-              },
+        if (session == null) {
+          if (!_hasNavigatedToLogin) {
+            _hasNavigatedToLogin = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.of(context).pushReplacementNamed('/login');
+            });
+          }
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
             ),
-          ],
-        ),
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.asset(
-                'assets/pexels-marek-piwnicki-3907296-11513053.jpg',
-                fit: BoxFit.cover,
-                color: Colors.black.withOpacity(0.5),
-                colorBlendMode: BlendMode.darken,
+          );
+        }
+
+        if (userId == null) {
+          userId = session.user.id;
+          _getUserIdAndFetchStats();
+        }
+
+        if (isLoading) {
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
+            ),
+          );
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            toolbarHeight: 50,
+            elevation: 0,
+            backgroundColor: const Color(0xFF0A0E21),
+            title: const Text('Home'),
+            centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout),
+                tooltip: 'Logout',
+                onPressed: () async {
+                  await Supabase.instance.client.auth.signOut();
+                  if (mounted) {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/login',
+                      (route) => false,
+                    );
+                  }
+                },
               ),
-            ),
-            SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 60, top: 0, left: 14, right: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 12),
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10.0),
-                      child: Text(
-                        '"The best way to predict the future is to create it."',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Color.fromARGB(255, 176, 137, 39),
-                          fontStyle: FontStyle.italic,
-                          fontWeight: FontWeight.w500,
+            ],
+          ),
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/pexels-marek-piwnicki-3907296-11513053.jpg',
+                  fit: BoxFit.cover,
+                  color: Colors.black.withOpacity(0.5),
+                  colorBlendMode: BlendMode.darken,
+                ),
+              ),
+              SingleChildScrollView(
+                padding: const EdgeInsets.only(
+                    bottom: 60, top: 0, left: 14, right: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 12),
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10.0),
+                        child: Text(
+                          '"The best way to predict the future is to create it."',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Color.fromARGB(255, 176, 137, 39),
+                            fontStyle: FontStyle.italic,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    _buildLeetCodeStyleStatus(),
+                    const SizedBox(height: 40),
+                    Text('Submissions in the past year',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 12),
+                    ActivityHeatmap(activityMap: activityMap),
+                    const SizedBox(height: 28),
+                    Text('Explore Core Features',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 14),
+                    _buildFeatureCardsGrid(context),
+                    const SizedBox(height: 28),
+                    Text('Community Feed',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 12),
+                    _buildActivityFeedItem(
+                        context, 'Welcome! Start your first challenge.'),
+                    _buildActivityFeedItem(
+                        context, 'Connect with your first mentor!'),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLeetCodeStyleStatus() {
+    const double circleSize = 105;
+    const double ringStroke = 8;
+
+    final double percentSolved =
+        totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
+    final int safeSolved = solvedQuestions == 0 ? 1 : solvedQuestions;
+    final double physicsPct = (subjectSolved["physics"] ?? 0) / safeSolved;
+    final double chemistryPct = (subjectSolved["chemistry"] ?? 0) / safeSolved;
+    final double mathsPct = (subjectSolved["maths"] ?? 0) / safeSolved;
+
+    const Map<String, Color> subjectColors = {
+      "physics": Color(0xFF12D6E8),
+      "chemistry": Color(0xFFFF6B3D),
+      "maths": Color(0xFF7D3EFF),
+    };
+
+    // Uses your above-defined rankStructure data and getRankStatus:
+    final Map<String, dynamic> rankStatus = getRankStatus(solvedQuestions);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      physics: const NeverScrollableScrollPhysics(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0A0A0C), Color(0xFF0F0F12)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.06),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF6B3D).withOpacity(0.2),
+              blurRadius: 12,
+              spreadRadius: 0.5,
+              offset: const Offset(0, 5),
+            ),
+            BoxShadow(
+              color: const Color(0xFF7D3EFF).withOpacity(0.12),
+              blurRadius: 10,
+              spreadRadius: 0,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // LEFT: Progress Circle and Rect Boxes
+            Expanded(
+              flex: 1,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Progress Circle
+                  SizedBox(
+                    width: circleSize,
+                    height: circleSize,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: circleSize,
+                          height: circleSize,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                Colors.grey[850]!,
+                                Colors.grey[900]!,
+                              ],
+                              stops: const [0.6, 1.0],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.5),
+                                blurRadius: 10,
+                                spreadRadius: 1.5,
+                              ),
+                            ],
+                          ),
+                        ),
+                        CustomPaint(
+                          size: Size(circleSize, circleSize),
+                          painter: MultiSegmentProgressPainter(
+                            physicsPercent: physicsPct,
+                            chemistryPercent: chemistryPct,
+                            mathsPercent: mathsPct,
+                            totalPercent: percentSolved,
+                            strokeWidth: ringStroke,
+                          ),
+                        ),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '$solvedQuestions',
+                              style: const TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFEDEDED),
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            Text(
+                              '/$totalQuestions',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFFA9A9A9),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            const Text(
+                              'Solved',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Color(0xFF00C878),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  _buildLeetCodeStyleStatus(),
-                  const SizedBox(height: 40),
-                  Text('Submissions in the past year',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 10),
+                  // Top Row: Physics + Chemistry - EQUAL WIDTH
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: _buildRectBox(
+                          subject: "Physics",
+                          solved: subjectSolved["physics"] ?? 0,
+                          total: subjectTotals["physics"] ?? 0,
+                          color: subjectColors["physics"]!,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildRectBox(
+                          subject: "Chemistry",
+                          solved: subjectSolved["chemistry"] ?? 0,
+                          total: subjectTotals["chemistry"] ?? 0,
+                          color: subjectColors["chemistry"]!,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 9),
+                  // Bottom Row: Maths (CENTERED, SMALLER)
+                  Center(
+                    child: SizedBox(
+                      width: 120,
+                      child: _buildRectBox(
+                        subject: "Maths",
+                        solved: subjectSolved["maths"] ?? 0,
+                        total: subjectTotals["maths"] ?? 0,
+                        color: subjectColors["maths"]!,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            // RIGHT: Dynamic Badge + Rank + Display Rank Structure Button
+            Expanded(
+              flex: 1,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Badge with GOLDEN GLOW based on current rank
+                  Container(
+                    width: 110,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      color: Colors.black.withOpacity(0.4),
+                      border: Border.all(
+                        color: Colors.black.withOpacity(0.6),
+                        width: 2,
+                      ),
+                      image: DecorationImage(
+                        image: AssetImage(rankStatus['badge'] as String),
+                        fit: BoxFit.cover,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD700).withOpacity(0.75),
+                          blurRadius: 24,
+                          spreadRadius: 4,
+                          offset: const Offset(0, 0),
+                        ),
+                        BoxShadow(
+                          color: const Color(0xFFFFD700).withOpacity(0.45),
+                          blurRadius: 16,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 0),
+                        ),
+                        BoxShadow(
+                          color: const Color(0xFFFFED4E).withOpacity(0.35),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 0),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  ActivityHeatmap(activityMap: activityMap),
-                  const SizedBox(height: 28),
-                  Text('Explore Core Features',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold, fontSize: 18)),
-                  const SizedBox(height: 14),
-                  _buildFeatureCardsGrid(context),
-                  const SizedBox(height: 28),
-                  Text('Community Feed',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  // Rank Text
+                  Text(
+                    rankStatus['name'],
+                    style: const TextStyle(
+                      fontSize: 19,
+                      color: Color(0xFFEDEDED),
+                      fontWeight: FontWeight.w800,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  // Rank Label
+                  Text(
+                    'Rank',
+                    style: TextStyle(
+                      color: Color(0xFFA9A9A9).withOpacity(0.85),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  // Motivational description
+                  Text(
+                    rankStatus['desc'],
+                    style: const TextStyle(
+                      color: Color(0xFFFDD835),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 12),
-                  _buildActivityFeedItem(context, 'Welcome! Start your first challenge.'),
-                  _buildActivityFeedItem(context, 'Connect with your first mentor!'),
-                  const SizedBox(height: 40),
+                  // Display Rank Structure button
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.military_tech,
+                        color: Colors.orangeAccent),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[900],
+                      foregroundColor: Colors.amber[400],
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: const BorderSide(color: Colors.amber, width: 1.7),
+                      ),
+                      elevation: 2,
+                    ),
+                    label: const Text('Display Rank Structure'),
+                    onPressed: () => showModalBottomSheet(
+                      context: context,
+                      backgroundColor: Colors.transparent,
+                      isScrollControlled: true,
+                      builder: (_) => const RankStructureSheet(),
+                    ),
+                  ),
                 ],
               ),
             ),
           ],
         ),
-      );
-    },
-  );
-}
-
-
-
-Widget _buildLeetCodeStyleStatus() {
-  const double circleSize = 105;
-  const double ringStroke = 8;
-
-  final double percentSolved =
-      totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
-  final int safeSolved = solvedQuestions == 0 ? 1 : solvedQuestions;
-  final double physicsPct = (subjectSolved["physics"] ?? 0) / safeSolved;
-  final double chemistryPct = (subjectSolved["chemistry"] ?? 0) / safeSolved;
-  final double mathsPct = (subjectSolved["maths"] ?? 0) / safeSolved;
-
-  const Map<String, Color> subjectColors = {
-    "physics": Color(0xFF12D6E8),
-    "chemistry": Color(0xFFFF6B3D),
-    "maths": Color(0xFF7D3EFF),
-  };
-
-  String getRankName(int solved) {
-    if (solved < 50) return "Recruit";
-    if (solved < 100) return "Cadet";
-    if (solved < 200) return "Sergeant";
-    if (solved < 500) return "Commander";
-    if (solved < 1000) return "Major";
-    return "Marshal";
+      ),
+    );
   }
 
-  return SingleChildScrollView(
-    scrollDirection: Axis.vertical,
-    physics: const NeverScrollableScrollPhysics(),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0A0A0C), Color(0xFF0F0F12)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.06),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF6B3D).withOpacity(0.2),
-            blurRadius: 12,
-            spreadRadius: 0.5,
-            offset: const Offset(0, 5),
+// Rectangular Box Helper
+  Widget _buildRectBox({
+    required String subject,
+    required int solved,
+    required int total,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.4),
+                blurRadius: 8,
+                spreadRadius: 0.5,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          BoxShadow(
-            color: const Color(0xFF7D3EFF).withOpacity(0.12),
-            blurRadius: 10,
-            spreadRadius: 0,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // LEFT: Circle + Boxes
-          Expanded(
-            flex: 1,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Progress Circle
-                SizedBox(
-                  width: circleSize,
-                  height: circleSize,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: circleSize,
-                        height: circleSize,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              Colors.grey[850]!,
-                              Colors.grey[900]!,
-                            ],
-                            stops: const [0.6, 1.0],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.5),
-                              blurRadius: 10,
-                              spreadRadius: 1.5,
-                            ),
-                          ],
-                        ),
-                      ),
-                      CustomPaint(
-                        size: Size(circleSize, circleSize),
-                        painter: MultiSegmentProgressPainter(
-                          physicsPercent: physicsPct,
-                          chemistryPercent: chemistryPct,
-                          mathsPercent: mathsPct,
-                          totalPercent: percentSolved,
-                          strokeWidth: ringStroke,
-                        ),
-                      ),
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$solvedQuestions',
-                            style: const TextStyle(
-                              fontSize: 36,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFFEDEDED),
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          Text(
-                            '/$totalQuestions',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFFA9A9A9),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          const Text(
-                            'Solved',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: Color(0xFF00C878),
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Top Row: Physics + Chemistry - EQUAL WIDTH
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: _buildRectBox(
-                        subject: "Physics",
-                        solved: subjectSolved["physics"] ?? 0,
-                        total: subjectTotals["physics"] ?? 0,
-                        color: subjectColors["physics"]!,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildRectBox(
-                        subject: "Chemistry",
-                        solved: subjectSolved["chemistry"] ?? 0,
-                        total: subjectTotals["chemistry"] ?? 0,
-                        color: subjectColors["chemistry"]!,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 9),
-                // Bottom Row: Maths (CENTERED, SMALLER)
-                Center(
-                  child: SizedBox(
-                    width: 120,
-                    child: _buildRectBox(
-                      subject: "Maths",
-                      solved: subjectSolved["maths"] ?? 0,
-                      total: subjectTotals["maths"] ?? 0,
-                      color: subjectColors["maths"]!,
-                    ),
-                  ),
-                ),
-              ],
+          child: Text(
+            '$solved / $total',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Colors.black,
+              letterSpacing: -0.3,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(width: 14),
-          // RIGHT: Badge + Rank
-          Expanded(
-            flex: 1,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Badge with GOLDEN GLOW
-                Container(
-                  width: 110,
-                  height: 110,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    color: Colors.black.withOpacity(0.4),
-                    border: Border.all(
-                      color: Colors.black.withOpacity(0.6),
-                      width: 2,
-                    ),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/50_days_badge.png'),
-                      fit: BoxFit.cover,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFFD700).withOpacity(0.75),
-                        blurRadius: 24,
-                        spreadRadius: 4,
-                        offset: const Offset(0, 0),
-                      ),
-                      BoxShadow(
-                        color: const Color(0xFFFFD700).withOpacity(0.45),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                        offset: const Offset(0, 0),
-                      ),
-                      BoxShadow(
-                        color: const Color(0xFFFFED4E).withOpacity(0.35),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: const Offset(0, 0),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Rank Text
-                Text(
-                  getRankName(solvedQuestions),
-                  style: const TextStyle(
-                    fontSize: 17,
-                    color: Color(0xFFEDEDED),
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                // Rank Label
-                Text(
-                  'Rank',
-                  style: TextStyle(
-                    color: Color(0xFFA9A9A9).withOpacity(0.85),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ],
-            ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subject,
+          style: const TextStyle(
+            color: Color(0xFFA9A9A9),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+Widget _buildFeatureCardsGrid(BuildContext context) {
+  final double cardSize = 110;
+
+  final List<Map<String, dynamic>> features = [
+    {
+      'title': 'PYQ Mains',
+      'icon': Icons.lightbulb_outline,
+      'color1': const Color(0xFFE57C23),
+      'color2': const Color(0xFFFF9800),
+      'navigate': () => Navigator.of(context).pushNamed('/pyq_chapter_list_screen'),
+    },
+    {
+      'title': 'Mock Test',
+      'icon': Icons.timer_outlined,
+      'color1': const Color(0xFF00C0A4),
+      'color2': const Color(0xFF1976D2),
+      'navigate': () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => MockTestListScreen()),
       ),
+    },
+  ];
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: GridView.builder(
+      shrinkWrap: true,
+      itemCount: features.length,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+        childAspectRatio: 1,
+      ),
+      itemBuilder: (context, index) {
+        final feature = features[index];
+
+        VoidCallback onTap = () async {
+          if (isFeatureCardBusy) return;
+          setState(() { isFeatureCardBusy = true; });
+          try {
+            if (hasAccess) {
+              feature['navigate'](); // Go to the matching screen
+            } else {
+              final paid = await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+              );
+              if (paid == true) {
+                await refreshSubscriptionStatus();
+                await _getUserIdAndFetchStats();
+                if (hasAccess) {
+                  feature['navigate']();
+                }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Payment cancelled or failed. Please try again to unlock access.'),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+              }
+            }
+          } finally {
+            setState(() { isFeatureCardBusy = false; });
+          }
+        };
+
+        return _buildColorfulGridCard(
+          context,
+          feature['title'],
+          feature['icon'] as IconData,
+          feature['color1'] as Color,
+          feature['color2'] as Color,
+          onTap: onTap,
+          isBusy: isFeatureCardBusy,
+        );
+      },
     ),
   );
 }
 
-// Rectangular Box Helper
-Widget _buildRectBox({
-  required String subject,
-  required int solved,
-  required int total,
-  required Color color,
+
+Widget _buildColorfulGridCard(
+  BuildContext context,
+  String title,
+  IconData icon,
+  Color color1,
+  Color color2, {
+  VoidCallback? onTap,
+  bool isBusy = false,
 }) {
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.center,
+  return Stack(
     children: [
-      Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.4),
-              blurRadius: 8,
-              spreadRadius: 0.5,
-              offset: const Offset(0, 3),
+      Opacity(
+        opacity: isBusy ? 0.6 : 1.0,
+        child: AbsorbPointer(
+          absorbing: isBusy,
+          child: Material(
+            borderRadius: BorderRadius.circular(16),
+            elevation: 3,
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(16),
+              child: Ink(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [color1.withOpacity(0.95), color2],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color2.withOpacity(0.30),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 14.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 35, color: Colors.white),
+                      const SizedBox(height: 10),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Access',
+                        style: TextStyle(color: Colors.white70, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ],
-        ),
-        child: Text(
-          '$solved / $total',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: Colors.black,
-            letterSpacing: -0.3,
           ),
-          textAlign: TextAlign.center,
         ),
       ),
-      const SizedBox(height: 4),
-      Text(
-        subject,
-        style: const TextStyle(
-          color: Color(0xFFA9A9A9),
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.2,
+      if (isBusy)
+        Positioned.fill(
+          child: Center(
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          ),
         ),
-      ),
     ],
   );
 }
 
-  Widget _buildFeatureCardsGrid(BuildContext context) {
-    final List<Map<String, dynamic>> features = [
-      {
-        'title': 'PYQ Mains',
-        'subtitle': 'Foundational Practice',
-        'icon': Icons.lightbulb_outline,
-        'color1': const Color(0xFFE57C23),
-        'color2': const Color(0xFFFF9800)
-      },
-      {
-        'title': 'PYQ Advanced',
-        'icon': Icons.military_tech_outlined,
-        'color1': const Color(0xFF9C27B0),
-        'color2': const Color(0xFF673AB7)
-      },
-      {
-        'title': 'Mock Test',
-        'icon': Icons.timer_outlined,
-        'color1': const Color(0xFF00C0A4),
-        'color2': const Color(0xFF1976D2)
-      },
-
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 0.85,
-      ),
-      itemCount: 3,
-      itemBuilder: (context, index) {
-        final feature = features[index];
-    final onTapAction = feature['title'] == 'Mock Test'
-        ? () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => MockTestListScreen())
-            );
-          }
-        : feature['title'] == 'PYQ Mains'
-        ? () {
-            Navigator.of(context).pushNamed('/pyq_mains');
-          }
-        : null;
-
-
-        return _buildColorfulGridCard(
-          context,
-          feature['title']!,
-          feature['icon'] as IconData,
-          feature['color1'] as Color,
-          feature['color2'] as Color,
-          onTap: onTapAction,
-        );
-      },
-    );
-  }
-
-  Widget _buildColorfulGridCard(BuildContext context, String title,
-      IconData icon, Color color1, Color color2,
-      {VoidCallback? onTap}) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          colors: [color1.withOpacity(0.95), color2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color2.withOpacity(0.4),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(4.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 30, color: Colors.white),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Access',
-                style: TextStyle(color: Colors.white70, fontSize: 9),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildActivityFeedItem(BuildContext context, String title) {
     return Padding(
@@ -786,12 +1070,10 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
   @override
   Widget build(BuildContext context) {
     DateTime now = DateTime.now();
-final months = List.generate(12, (i) {
-  final date = DateTime(now.year, now.month - i, 1);
-  return DateTime(date.year, date.month, 1);
-}).reversed.toList(); // latest month last/right
-
-
+    final months = List.generate(12, (i) {
+      final date = DateTime(now.year, now.month - i, 1);
+      return DateTime(date.year, date.month, 1);
+    }).reversed.toList(); // latest month last/right
 
     const double boxSize = 10;
     const double gap = 2;
@@ -806,7 +1088,7 @@ final months = List.generate(12, (i) {
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        reverse: true, 
+        reverse: true,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: months.map((monthStart) {
@@ -915,7 +1197,6 @@ final months = List.generate(12, (i) {
   }
 }
 
-
 class PaperTodoList extends StatefulWidget {
   final List<String> initialTasks;
   final Function(List<bool>, List<String>, String, String) onSave;
@@ -986,7 +1267,8 @@ class _PaperTodoListState extends State<PaperTodoList> {
               Text(
                 'To-Do List',
                 style: TextStyle(
-                  fontFamily: 'PermanentMarker', // Add to pubspec.yaml for handwriting look
+                  fontFamily:
+                      'PermanentMarker', // Add to pubspec.yaml for handwriting look
                   fontSize: 28,
                   color: Colors.black,
                   fontWeight: FontWeight.w500,
@@ -995,32 +1277,38 @@ class _PaperTodoListState extends State<PaperTodoList> {
               ),
               SizedBox(height: 8),
               Divider(color: Colors.black, thickness: 1.5),
-              ...List.generate(5, (i) => Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Checkbox(
-                      value: checked[i],
-                      onChanged: (val) => setState(() => checked[i] = val ?? false),
-                      activeColor: Colors.black,
-                      checkColor: Colors.white,
-                      side: BorderSide(color: Colors.black, width: 2),
-                    ),
-                    Expanded(
-                      child: TextField(
-                        style: TextStyle(fontSize: 17, color: Colors.black),
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'Task ${i + 1}',
-                          hintStyle: TextStyle(fontStyle: FontStyle.italic),
+              ...List.generate(
+                  5,
+                  (i) => Padding(
+                        padding: EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: checked[i],
+                              onChanged: (val) =>
+                                  setState(() => checked[i] = val ?? false),
+                              activeColor: Colors.black,
+                              checkColor: Colors.white,
+                              side: BorderSide(color: Colors.black, width: 2),
+                            ),
+                            Expanded(
+                              child: TextField(
+                                style: TextStyle(
+                                    fontSize: 17, color: Colors.black),
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'Task ${i + 1}',
+                                  hintStyle:
+                                      TextStyle(fontStyle: FontStyle.italic),
+                                ),
+                                controller: TextEditingController(
+                                    text: tasks.length > i ? tasks[i] : ''),
+                                onChanged: (val) => tasks[i] = val,
+                              ),
+                            ),
+                          ],
                         ),
-                        controller: TextEditingController(text: tasks.length > i ? tasks[i] : ''),
-                        onChanged: (val) => tasks[i] = val,
-                      ),
-                    ),
-                  ],
-                ),
-              )),
+                      )),
               Divider(color: Colors.black, thickness: 1.2),
               Row(
                 children: [
@@ -1035,7 +1323,8 @@ class _PaperTodoListState extends State<PaperTodoList> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Don\'t forget:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text('Don\'t forget:',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                           TextField(
                             controller: dontForgetCtrl,
                             style: TextStyle(fontSize: 14, color: Colors.black),
@@ -1059,7 +1348,8 @@ class _PaperTodoListState extends State<PaperTodoList> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Notes:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text('Notes:',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                           TextField(
                             controller: notesCtrl,
                             style: TextStyle(fontSize: 14, color: Colors.black),
@@ -1078,13 +1368,15 @@ class _PaperTodoListState extends State<PaperTodoList> {
               SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () {
-                  widget.onSave(checked, tasks, dontForgetCtrl.text, notesCtrl.text);
+                  widget.onSave(
+                      checked, tasks, dontForgetCtrl.text, notesCtrl.text);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
                 child: Text('Save', style: TextStyle(fontSize: 17)),
               ),
@@ -1095,4 +1387,3 @@ class _PaperTodoListState extends State<PaperTodoList> {
     );
   }
 }
-

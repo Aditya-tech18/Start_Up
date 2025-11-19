@@ -3,6 +3,13 @@ import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 
+import 'package:just_audio/just_audio.dart';
+
+
+
+
+
+
 // --- DATA STRUCTURE FOR A SINGLE QUESTION ---
 class PyqQuestion {
   final int id;
@@ -94,6 +101,7 @@ class PyqQuestion {
 }
 
 class QuestionScreen extends StatefulWidget {
+
   final String chapterName;
   final String subjectName;
   final String selectedYear;
@@ -113,6 +121,10 @@ class QuestionScreen extends StatefulWidget {
 
 
 class _QuestionScreenState extends State<QuestionScreen> {
+
+    final AudioPlayer _correctPlayer = AudioPlayer();
+  final AudioPlayer _wrongPlayer = AudioPlayer();
+
   List<PyqQuestion> _filteredQuestions = [];
   int _currentQuestionIndex = 0;
   String? _selectedOption;
@@ -124,6 +136,13 @@ class _QuestionScreenState extends State<QuestionScreen> {
   String _removeLeadingZeros(String input) {
   return input.replaceFirst(RegExp(r'^0+'), '');
 }
+
+  @override
+  void dispose() {
+    _correctPlayer.dispose();
+    _wrongPlayer.dispose();
+    super.dispose();
+  }
 
 
   bool get _isNumericalQuestion => 
@@ -167,6 +186,7 @@ setState(() {
   }
 });
 
+
       
       print('✅ Loaded ${_filteredQuestions.length} questions');
       if (_filteredQuestions.isNotEmpty) {
@@ -183,12 +203,31 @@ setState(() {
     }
   }
 
+
+
 void _submitAnswer(String selectedOption) async {
   if (_isSubmitted) return;
+
+  final currentQuestion = _filteredQuestions[_currentQuestionIndex];
+  final isCorrect = _isNumericalQuestion
+    ? _userAnswer == currentQuestion.correctAnswer
+    : selectedOption.startsWith('(${currentQuestion.correctAnswer})') || selectedOption == currentQuestion.correctAnswer;
+
+  // Play sound depending on correctness
+  if (isCorrect) {
+    await _correctPlayer.setAsset('assets/correct-156911.mp3');
+    _correctPlayer.play();
+  } else {
+    await _wrongPlayer.setAsset('assets/error-mistake-sound-effect-incorrect-answer-437420.mp3');
+    _wrongPlayer.play();
+  }
+  
+
   setState(() {
     _selectedOption = selectedOption;
     _isSubmitted = true;
   });
+
 
   // -------- DB Submission Logic (for heatmap) --------
   try {
@@ -464,13 +503,32 @@ final currentQuestion = _filteredQuestions[_currentQuestionIndex];
     // AB tumhara question box jaise hai waise hi likho
     _buildQuestionBox(currentQuestion.text),
     const SizedBox(height: 24),
-    ..._buildOptionsFromMap(context, currentQuestion.options, currentQuestion.correctAnswer),
-    const SizedBox(height: 32),
-    if (_isSubmitted) ...[
-      _buildSolutionBox(context, currentQuestion.solution),
-      const SizedBox(height: 16),
-      _buildAIDoubtSolverButton(context),
-    ],
+..._buildOptionsFromMap(context, currentQuestion.options, currentQuestion.correctAnswer),
+
+if (!_isNumericalQuestion && !_isSubmitted)
+  Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    child: ElevatedButton(
+      onPressed: _selectedOption != null ? () => _submitAnswer(_selectedOption!) : null,
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 50),
+        backgroundColor: const Color(0xFFE57C23),
+      ),
+      child: const Text(
+        'Submit Answer',
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+      ),
+    ),
+  ),
+
+const SizedBox(height: 32),
+
+if (_isSubmitted) ...[
+  _buildSolutionBox(context, currentQuestion.solution),
+  const SizedBox(height: 16),
+  _buildAIDoubtSolverButton(context),
+],
+
   ],
 )
 
@@ -609,7 +667,12 @@ List<Widget> _buildOptionsFromMap(
   return Padding(
     padding: const EdgeInsets.only(bottom: 12.0),
     child: GestureDetector(
-      onTap: _isSubmitted ? null : () => _submitAnswer(prefix + imageUrl),
+onTap: _isSubmitted ? null : () {
+  setState(() {
+    _selectedOption = prefix + imageUrl;
+  });
+},
+
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
@@ -718,7 +781,12 @@ Widget _buildOptionTile(
   return Padding(
     padding: const EdgeInsets.only(bottom: 12.0),
     child: GestureDetector(
-      onTap: _isSubmitted ? null : () => _submitAnswer(option),
+onTap: _isSubmitted ? null : () {
+  setState(() {
+    _selectedOption = option;
+  });
+},
+
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),

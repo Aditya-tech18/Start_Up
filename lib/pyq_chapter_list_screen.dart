@@ -42,12 +42,16 @@ String _searchQuery = '';
   final Map<SubjectEnum, List<Chapter>> _allChapters = {
     // ==================== MATHS - 32 CHAPTERS ====================
     SubjectEnum.maths: [
-      // Basic & Algebra
-      Chapter(
-          name: 'Basic Math',
-          icon: Icons.calculate_outlined,
-          iconColor: Colors.brown,
-          completionStats: '0/17 Qs'),
+        Chapter(
+          name: 'Sets & Relations',
+          icon: Icons.category,
+          iconColor: Colors.purple,
+          completionStats: '0/107 Qs'),
+        Chapter(
+          name: 'Functions',
+          icon: Icons.functions,
+          iconColor: Colors.deepOrange,
+          completionStats: '0/205 Qs'),
       Chapter(
           name: 'Quadratic Equations',
           icon: Icons.functions_outlined,
@@ -69,7 +73,7 @@ String _searchQuery = '';
           iconColor: Colors.orange,
           completionStats: '7/328 Qs'),
       Chapter(
-          name: 'Math Induction',
+          name: 'Mathematical Induction',
           icon: Icons.psychology_outlined,
           iconColor: Colors.deepPurple,
           completionStats: '0/3 Qs'),
@@ -102,11 +106,6 @@ String _searchQuery = '';
           icon: Icons.show_chart,
           iconColor: Colors.green,
           completionStats: '4/203 Qs'),
-      Chapter(
-          name: 'Pair of Lines',
-          icon: Icons.compare_arrows,
-          iconColor: Colors.teal,
-          completionStats: '0/0 Qs'),
       Chapter(
           name: 'Circle',
           icon: Icons.radio_button_unchecked,
@@ -181,18 +180,6 @@ String _searchQuery = '';
           icon: Icons.view_in_ar,
           iconColor: Colors.blue.shade600,
           completionStats: '0/386 Qs'),
-
-      // Matrices & Others
-      Chapter(
-          name: 'Sets & Relations',
-          icon: Icons.category,
-          iconColor: Colors.purple,
-          completionStats: '0/107 Qs'),
-      Chapter(
-          name: 'Functions',
-          icon: Icons.functions,
-          iconColor: Colors.deepOrange,
-          completionStats: '0/205 Qs'),
       Chapter(
           name: 'Matrices',
           icon: Icons.grid_on,
@@ -414,11 +401,6 @@ String _searchQuery = '';
     // ==================== PHYSICS - 32 CHAPTERS (Already Complete) ====================
     SubjectEnum.physics: [
       Chapter(
-          name: 'Math in Physics',
-          icon: Icons.functions,
-          iconColor: Colors.purple.shade300,
-          completionStats: '0/118 Qs'),
-      Chapter(
           name: 'Units & Dimensions',
           icon: Icons.straighten,
           iconColor: Colors.green.shade400,
@@ -443,11 +425,6 @@ String _searchQuery = '';
           icon: Icons.power,
           iconColor: Colors.yellow.shade700,
           completionStats: '0/168 Qs'),
-      Chapter(
-          name: 'COM & Collisions',
-          icon: Icons.blur_circular,
-          iconColor: Colors.cyan.shade400,
-          completionStats: '0/123 Qs'),
       Chapter(
           name: 'Rotational Motion',
           icon: Icons.rotate_right,

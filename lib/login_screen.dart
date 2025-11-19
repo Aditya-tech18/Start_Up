@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (event == AuthChangeEvent.passwordRecovery) {
         debugPrint('🔐 Password recovery event detected');
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/reset_password');
+          Navigator.of(context).pushReplacementNamed('/home');
         }
       }
     });
@@ -70,71 +70,131 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-  /// 🔴 NEW: Handle Forgot Password
-
 Future<void> _handleForgotPassword() async {
-  if (_emailController.text.trim().isEmpty) {
+  final email = _emailController.text.trim();
+  if (email.isEmpty || _validateEmail(email) != null) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Please enter your email address'),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 3),
-      ),
+      SnackBar(content: Text('Please enter a valid email address')),
     );
     return;
   }
 
-  if (_validateEmail(_emailController.text.trim()) != null) {
+  setState(() { _isLoading = true; });
+
+  // Call your Edge Function via Supabase
+  final response = await Supabase.instance.client.functions.invoke(
+    'otp_generator', // Name of your Edge Function
+    body: {'email': email},
+  );
+  final resData = response.data;
+
+  if (response.status == 200 && resData['success'] == true) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Please enter a valid email address'),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 3),
-      ),
+      const SnackBar(content: Text('✅ OTP sent to your email!'), backgroundColor: Colors.green),
     );
+    // Navigate to OTP Verification Screen, pass the email
+    Navigator.of(context).pushNamed('/otp_verification', arguments: email);
+  } else {
+    // Show backend error
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: Could not send OTP')),
+    );
+  }
+
+  setState(() { _isLoading = false; });
+}
+
+
+
+
+/// Handle authentication (Sign Up or Login)
+Future<void> _handleAuth() async {
+  if (!_formKey.currentState!.validate()) {
     return;
   }
+
+  FocusScope.of(context).unfocus();
 
   setState(() {
     _isLoading = true;
+    _errorMsg = null;
   });
 
+  final email = _emailController.text.trim();
+  final password = _passwordController.text.trim();
+
   try {
-    final email = _emailController.text.trim();
+    final auth = Supabase.instance.client.auth;
 
-    // ----------------------------
-    // TEMPORARY: Hard-coded redirect for testing
-    // Replace back with dynamic logic after verification if needed
-    // ----------------------------
-    final redirect = 'https://prepixo.netlify.app/reset-password.html';
-    debugPrint('DEBUG resetPasswordForEmail -> redirect: $redirect, email: $email');
-
-    await Supabase.instance.client.auth.resetPasswordForEmail(
-      email,
-      redirectTo: redirect,
-    );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Password reset link sent! Check your email.'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 4),
-        ),
+    if (_isSignUp) {
+      // STEP 1: Send OTP to the user's email before signup
+      final response = await Supabase.instance.client.functions.invoke(
+        'otp_generator',
+        body: {'email': email},
       );
-      _passwordController.clear();
+      final resData = response.data;
+
+      if (response.status == 200 && resData['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ OTP sent! Please verify OTP.'),
+          backgroundColor: Colors.green),
+        );
+        // Navigate to OTP Verification Screen, pass email and password
+        Navigator.of(context).pushNamed('/otp_verification', arguments: {
+          'email': email,
+          'password': password,
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: Could not send OTP')),
+        );
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+      return; // Exit as signup is pending OTP verification
+
+    } else {
+      // Login
+      final res = await auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      if (res.user != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎉 Welcome back!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // Navigate to HOME on login
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
     }
   } on AuthException catch (e) {
+    String errorMessage = _getReadableError(e.message);
+    setState(() {
+      _errorMsg = errorMessage;
+    });
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_getReadableError(e.message)),
+          content: Text(errorMessage),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 4),
         ),
       );
     }
   } catch (e) {
+    setState(() {
+      _errorMsg = 'An unexpected error occurred. Please try again.';
+    });
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -144,7 +204,7 @@ Future<void> _handleForgotPassword() async {
         ),
       );
     }
-    debugPrint('Forgot password error: $e');
+    debugPrint('Auth error: $e');
   } finally {
     if (mounted) {
       setState(() {
@@ -153,116 +213,6 @@ Future<void> _handleForgotPassword() async {
     }
   }
 }
-
-
-  /// Handle authentication (Sign Up or Login)
-  Future<void> _handleAuth() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    FocusScope.of(context).unfocus();
-
-    setState(() {
-      _isLoading = true;
-      _errorMsg = null;
-    });
-
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    try {
-      final auth = Supabase.instance.client.auth;
-
-      if (_isSignUp) {
-        // Sign Up
-        final res = await auth.signUp(email: email, password: password);
-
-        if (res.user != null) {
-          try {
-            await Supabase.instance.client.from('users').insert({
-              'id': res.user!.id,
-              'email': email,
-              'full_name': '',
-              'phone': '',
-              'avatar_url': '',
-              'created_at': DateTime.now().toIso8601String(),
-            });
-          } catch (e) {
-            debugPrint('Error inserting user data: $e');
-          }
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('✅ Account created successfully!'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-              ),
-            );
-
-            // ✅ Navigate to exam selection on signup
-            Navigator.of(context).pushReplacementNamed('/exam_selection');
-          }
-        }
-      } else {
-        // Login
-        final res = await auth.signInWithPassword(
-          email: email,
-          password: password,
-        );
-
-        if (res.user != null && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('🎉 Welcome back!'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
-          );
-
-          // ✅ Navigate to HOME on login (not exam selection)
-          Navigator.of(context).pushReplacementNamed('/home');
-        }
-      }
-    } on AuthException catch (e) {
-      String errorMessage = _getReadableError(e.message);
-      setState(() {
-        _errorMsg = errorMessage;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _errorMsg = 'An unexpected error occurred. Please try again.';
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-      debugPrint('Auth error: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
 
   /// Convert technical error messages to user-friendly ones
   String _getReadableError(String error) {
