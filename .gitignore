@@ -32,3 +32,5 @@ build/
 *.swp
 .DS_Store
 
+# Local Razorpay client key file (DO NOT COMMIT TO PUBLIC REPOS)
+lib/keys/razorpay_keys.dart

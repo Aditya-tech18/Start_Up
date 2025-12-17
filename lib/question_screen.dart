@@ -726,15 +726,14 @@ onTap: _isSubmitted ? null : () {
                     fontWeight: FontWeight.bold,
                     fontSize: 14)),
           ),
-          const Row(
-            children: [
-              Text('Solved: 0/0',
-                  style: TextStyle(color: Colors.white70, fontSize: 12)),
-              SizedBox(width: 10),
-              Text('Accuracy: --%',
-                  style: TextStyle(color: Colors.white54, fontSize: 12)),
-            ],
-          )
+const Text(
+  'Keep Going 🚀',   // or just 'Keep Going'
+  style: TextStyle(
+    color: Colors.white70,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+  ),
+)
         ],
       ),
     );

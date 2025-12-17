@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:saas_new/pyq_chapter_list_screen.dart';
 import 'package:saas_new/subscription_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -132,7 +133,7 @@ class RankStructureSheet extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              '🌟 THE PATH TO MASTERY 🌟',
+              'ðŸŒŸ THE PATH TO MASTERY ðŸŒŸ',
               style: TextStyle(
                 fontSize: 20,
                 color: Color(0xFFFFD600),
@@ -866,7 +867,12 @@ Widget _buildFeatureCardsGrid(BuildContext context) {
       'icon': Icons.lightbulb_outline,
       'color1': const Color(0xFFE57C23),
       'color2': const Color(0xFFFF9800),
-      'navigate': () => Navigator.of(context).pushNamed('/pyq_chapter_list_screen'),
+'navigate': () => Navigator.of(context).push(
+  MaterialPageRoute(
+    builder: (_) => const PyqChapterListScreen(),
+  ),
+),
+
     },
     {
       'title': 'Mock Test',
@@ -879,30 +885,36 @@ Widget _buildFeatureCardsGrid(BuildContext context) {
     },
   ];
 
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
+return Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 16),
+  child: SizedBox(
+    height: 210, // zyada vertical space → cards tall + centred
     child: GridView.builder(
       shrinkWrap: true,
       itemCount: features.length,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-        childAspectRatio: 1,
+        crossAxisSpacing: 20, // cards ke beech thoda gap
+        mainAxisSpacing: 0,
+        childAspectRatio: 1.15, // width ≈ height, premium card look
       ),
       itemBuilder: (context, index) {
         final feature = features[index];
 
         VoidCallback onTap = () async {
           if (isFeatureCardBusy) return;
-          setState(() { isFeatureCardBusy = true; });
+          setState(() {
+            isFeatureCardBusy = true;
+          });
           try {
             if (hasAccess) {
-              feature['navigate'](); // Go to the matching screen
+              feature['navigate']();
             } else {
               final paid = await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const SubscriptionScreen(),
+                ),
               );
               if (paid == true) {
                 await refreshSubscriptionStatus();
@@ -912,8 +924,10 @@ Widget _buildFeatureCardsGrid(BuildContext context) {
                 }
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Payment cancelled or failed. Please try again to unlock access.'),
+                  const SnackBar(
+                    content: Text(
+                      'Payment cancelled or failed. Please try again to unlock access.',
+                    ),
                     backgroundColor: Colors.red,
                     duration: Duration(seconds: 3),
                   ),
@@ -921,7 +935,9 @@ Widget _buildFeatureCardsGrid(BuildContext context) {
               }
             }
           } finally {
-            setState(() { isFeatureCardBusy = false; });
+            setState(() {
+              isFeatureCardBusy = false;
+            });
           }
         };
 
@@ -936,7 +952,8 @@ Widget _buildFeatureCardsGrid(BuildContext context) {
         );
       },
     ),
-  );
+  ),
+);
 }
 
 
@@ -978,30 +995,32 @@ Widget _buildColorfulGridCard(
                     ),
                   ],
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 14.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon, size: 35, color: Colors.white),
-                      const SizedBox(height: 10),
-                      Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Access',
-                        style: TextStyle(color: Colors.white70, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ),
+child: Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 18.0),
+  child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Icon(icon, size: 38, color: Colors.white),
+      const SizedBox(height: 12),
+      Text(
+        title,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'Access',
+        style: TextStyle(color: Colors.white70, fontSize: 11),
+      ),
+    ],
+  ),
+),
               ),
             ),
           ),

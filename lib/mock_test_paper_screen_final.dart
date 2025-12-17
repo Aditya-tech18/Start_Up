@@ -75,56 +75,101 @@ class _MockTestPaperScreenState extends State<MockTestPaperScreen> {
     });
   }
 
-  Future<void> _fetchQuestionsFromSupabase() async {
-    try {
-      final response = await Supabase.instance.client
-          .from('questions')
-          .select()
-          .gte('id', 202524200)
-          .lte('id', 202524999)
-          .order('id', ascending: true);
+Future<void> _fetchQuestionsFromSupabase() async {
+  try {
+    // 1) Primary shift questions (tumhara existing range)
+    final response = await Supabase.instance.client
+        .from('questions')
+        .select()
+        .gte('id', 202524200)
+        .lte('id', 202524999)
+        .order('id', ascending: true);
 
-      if (response == null || response is! List || response.isEmpty) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'No questions found for this exam';
-        });
-        return;
-      }
-
-      List<Question> allQuestions = (response as List)
-          .map((json) {
-        try {
-          return Question.fromJson(json);
-        } catch (e) {
-          return null;
-        }
-      }).whereType<Question>().toList();
-
-      for (final subject in _subjects) {
-        List<Question> subjectQuestions = allQuestions
-            .where((q) => q.subject.toLowerCase() == subject.toLowerCase())
-            .toList();
-        List<Question> sectionAQuestions = subjectQuestions
-            .where((q) => q.optionsList != null && q.optionsList!.isNotEmpty)
-            .toList();
-        List<Question> sectionBQuestions = subjectQuestions
-            .where((q) => q.optionsList == null || q.optionsList!.isEmpty)
-            .toList();
-        _questions[subject]!['A'] = sectionAQuestions.take(20).toList();
-        _questions[subject]!['B'] = sectionBQuestions.take(10).toList();
-      }
+    if (response == null || response is! List || response.isEmpty) {
       setState(() {
         _isLoading = false;
+        _errorMessage = 'No questions found for this exam';
       });
-      _startTimer();
-    } catch (e, stackTrace) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Error: $e';
-      });
+      return;
     }
+
+    List<Question> allQuestions = (response as List)
+        .map((json) {
+          try {
+            return Question.fromJson(json);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Question>()
+        .toList();
+
+    // 2) Extra integer questions from anywhere in DB
+    //    (yahan tum koi bhi condition laga sakte ho:
+    //     same year, different shift, etc.)
+    final extraResp = await Supabase.instance.client
+        .from('questions')
+        .select()
+        .gte('id', 202524200); // <= yahi tumne bola "starting from 2025242"
+
+    final extraAll = (extraResp as List?)
+            ?.map((json) {
+              try {
+                return Question.fromJson(json);
+              } catch (_) {
+                return null;
+              }
+            })
+            .whereType<Question>()
+            .toList() ??
+        [];
+
+    for (final subject in _subjects) {
+      // ---- Subject specific lists from primary shift ----
+      List<Question> subjectQuestions = allQuestions
+          .where((q) => q.subject.toLowerCase() == subject.toLowerCase())
+          .toList();
+
+      List<Question> sectionAQuestions = subjectQuestions
+          .where((q) => q.optionsList != null && q.optionsList!.isNotEmpty)
+          .toList();
+
+      List<Question> sectionBPrimary = subjectQuestions
+          .where((q) => q.optionsList == null || q.optionsList!.isEmpty)
+          .toList();
+
+      // ---- Top‑up Section B with extra integers ----
+      List<Question> sectionB = List.from(sectionBPrimary);
+      int needed = 10 - sectionB.length;
+      if (needed > 0) {
+        // extra integers of SAME subject, not already used
+        final extraIntegers = extraAll
+            .where((q) =>
+                q.subject.toLowerCase() == subject.toLowerCase() &&
+                (q.optionsList == null || q.optionsList!.isEmpty) &&
+                !sectionBPrimary.any((p) => p.id == q.id))
+            .toList();
+
+        extraIntegers.shuffle();
+        sectionB.addAll(extraIntegers.take(needed));
+      }
+
+      _questions[subject]!['A'] = sectionAQuestions.take(20).toList();
+      _questions[subject]!['B'] = sectionB.take(10).toList();
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+    _startTimer();
+  } catch (e, stackTrace) {
+    setState(() {
+      _isLoading = false;
+      _errorMessage = 'Error: $e';
+    });
   }
+}
+
 
   void _startTimer() {
     _testStartTime = DateTime.now();
@@ -698,27 +743,7 @@ void _saveCurrentAnswer() {
   }
 
 Widget _buildQuestionCard(Question question) {
-  // Remove option lines like (1) ... (2) ... at the end of questionText if present
-  String cleanQuestionText = question.questionText;
-  final optRegex = RegExp(r'(\(?[1-4]\)?\.?\s?.+?)(?=(\(?[2-4]\)?\.?\s))', dotAll: true); // Handles "(1)" or "1)" or "1."
-  // Remove all lines that look like options at the END (and after 'is:'/etc, to preserve main question)
-  if (question.optionsList != null && question.optionsList!.isNotEmpty) {
-    // Remove from last 'is:' to end if options are present
-    int idx = cleanQuestionText.lastIndexOf('is:');
-    if (idx != -1) {
-      cleanQuestionText = cleanQuestionText.substring(0, idx + 3).replaceAll('\\n', '\n').trim();
-    } else {
-      // fallback: remove from first (1), (A), etc if found late in question
-      for (final k in question.optionsList!.keys) {
-        final pattern = '($k)';
-        final lastIdx = cleanQuestionText.lastIndexOf(pattern);
-        if (lastIdx > 20) {
-          cleanQuestionText = cleanQuestionText.substring(0, lastIdx).replaceAll('\\n', '\n').trim();
-          break;
-        }
-      }
-    }
-  }
+  final text = question.questionText; // DB se raw, sirf \n mapping _buildLatexText karega
 
   return Container(
     padding: const EdgeInsets.all(16),
@@ -751,14 +776,16 @@ Widget _buildQuestionCard(Question question) {
           ],
         ),
         const SizedBox(height: 12),
-        _buildLatexText(cleanQuestionText, fontSize: 16, color: Colors.white),
-        if (question.questionImageUrl != null && question.questionImageUrl!.isNotEmpty)
+        _buildLatexText(text, fontSize: 16, color: Colors.white),
+        if (question.questionImageUrl != null &&
+            question.questionImageUrl!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Image.network(
               question.questionImageUrl!,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white24),
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.broken_image, color: Colors.white24),
             ),
           ),
       ],
@@ -767,70 +794,56 @@ Widget _buildQuestionCard(Question question) {
 }
 
 
+
 Widget _buildMCQOptions(Question question) {
-  // Debug print to check what is actually fetched
-  print('Question options: ${question.optionsList}');
+  final options = question.optionsList ?? {};
+  if (options.isEmpty) return const SizedBox.shrink();
 
-  if (question.optionsList == null || question.optionsList!.isEmpty) {
-    return const SizedBox.shrink();
-  }
-
-  String? savedAnswer = _selectedAnswers[_currentSubject]![_currentSection]![_currentQuestionIndex];
-
-  String toLaTeX(String txt) {
-    // Convert ALL a/b (like 3/8, 1/2, 3/2, etc.) to LaTeX fractions
-    txt = txt.replaceAllMapped(
-      RegExp(r'(\d+)\s*/\s*(\d+)'),
-      (m) => '\\frac{${m[1]}}{${m[2]}}',
-    );
-    // Convert pi to LaTeX symbol
-    txt = txt.replaceAllMapped(
-      RegExp(r'(?<!\\)pi'),
-      (m) => r'\pi'
-    );
-    // Always wrap in $...$ for correct parsing
-    if (!txt.startsWith(r'$')) txt = '\$$txt\$';
-    return txt;
-  }
+  String? selected = _selectedAnswers[_currentSubject]![_currentSection]![_currentQuestionIndex];
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
+      const SizedBox(height: 20),
       const Text(
         'Select your answer:',
         style: TextStyle(
-          color: Colors.orange,
+          color: Color(0xFFE57C23),
           fontWeight: FontWeight.bold,
           fontSize: 17,
         ),
       ),
       const SizedBox(height: 16),
-      ...question.optionsList!.entries.map((entry) {
-        String optionKey = entry.key;
-        String optionValue = entry.value.trim();
-        bool isImage = optionValue.startsWith('http') &&
-          (optionValue.endsWith('.png') ||
-           optionValue.endsWith('.jpg') ||
-           optionValue.endsWith('.jpeg'));
-        bool isSelected = savedAnswer == optionKey;
+      ...options.entries.map((entry) {
+        final optionKey = entry.key;
+        final optionValue = entry.value.trim();
+        final isImage = optionValue.startsWith('http') &&
+            (optionValue.endsWith('.png') ||
+                optionValue.endsWith('.jpg') ||
+                optionValue.endsWith('.jpeg'));
+        final isSelected = selected == optionKey;
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.only(bottom: 12.0),
           child: GestureDetector(
             onTap: () {
               setState(() {
                 _selectedAnswers[_currentSubject]![_currentSection]![_currentQuestionIndex] = optionKey;
               });
             },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF32291A) : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                color: isSelected
+                    ? const Color(0xFF32291A)
+                    : const Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: isSelected ? Colors.orange : Colors.grey[700]!,
-                  width: isSelected ? 2.1 : 1.2,
+                  color: isSelected
+                      ? const Color(0xFFE57C23)
+                      : Colors.white12,
+                  width: isSelected ? 2 : 1.2,
                 ),
               ),
               child: Row(
@@ -839,33 +852,40 @@ Widget _buildMCQOptions(Question question) {
                   Text(
                     '(${optionKey}) ',
                     style: const TextStyle(
-                      color: Colors.orange,
+                      color: Color(0xFFE57C23),
                       fontWeight: FontWeight.bold,
                       fontSize: 17,
                     ),
                   ),
-                  Flexible(
+                  Expanded(
                     child: isImage
-                      ? Image.network(
-                          optionValue,
-                          fit: BoxFit.contain,
-                          height: 45,
-                        )
-                      : _buildLatexText(
-                          toLaTeX(optionValue),
-                          fontSize: 17,
-                          color: Colors.white,
-                        ),
+                        ? Image.network(
+                            optionValue,
+                            height: 70,
+                            width: 110,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.broken_image,
+                              color: Colors.white24,
+                              size: 32,
+                            ),
+                          )
+                        : _buildLatexText(
+                            optionValue,
+                            fontSize: 17,
+                            color: Colors.white,
+                          ),
                   ),
                 ],
               ),
             ),
           ),
         );
-      }).toList(),
+      }),
     ],
   );
 }
+
 
 
 
@@ -945,9 +965,14 @@ Widget _buildMCQOptions(Question question) {
 Widget _buildBottomNavigationBar(int totalQuestions) {
   final isLastQuestion = _currentQuestionIndex == totalQuestions - 1;
   final isFirstQuestion = _currentQuestionIndex == 0;
+  
+  // ✅ Check if current position is LAST question of Mathematics Section B
+  final isFinalQuestion = _currentSubject == 'Mathematics' && 
+                          _currentSection == 'B' && 
+                          isLastQuestion;
 
   TextStyle labelStyle = const TextStyle(
-    fontSize: 15, // Reduced font size for better fit
+    fontSize: 15,
     fontWeight: FontWeight.w600,
     color: Colors.white,
     overflow: TextOverflow.ellipsis,
@@ -1000,22 +1025,51 @@ Widget _buildBottomNavigationBar(int totalQuestions) {
             child: ElevatedButton.icon(
               onPressed: () {
                 _saveCurrentAnswer();
-                if (!isLastQuestion) _nextQuestion();
-                else _showSubmitDialog();
+
+                // ✅ If it's the final question (Math Section B last), submit test
+                if (isFinalQuestion) {
+                  _showSubmitDialog();
+                  return;
+                }
+
+                // ✅ Otherwise, follow the navigation pattern
+                final isLastSectionA = 
+                    (_currentSection == 'A') && (isLastQuestion);
+                final isLastSectionB = 
+                    (_currentSection == 'B') && (isLastQuestion);
+
+                if (_currentSection == 'A' && !isLastQuestion) {
+                  // Not last in Section A, go to next question
+                  _nextQuestion();
+                } else if (isLastSectionA) {
+                  // Last of Section A → Go to Section B, first question (same subject)
+                  _switchSection('B');
+                  _goToQuestion(0);
+                } else if (_currentSection == 'B' && !isLastQuestion) {
+                  // Not last in Section B, go to next question
+                  _nextQuestion();
+                } else if (isLastSectionB) {
+                  // Last of Section B → Go to next subject, Section A, first question
+                  int currentSubjectIndex = _subjects.indexOf(_currentSubject);
+                  int nextSubjectIndex = (currentSubjectIndex + 1) % _subjects.length;
+                  _switchSubject(_subjects[nextSubjectIndex]);
+                  _switchSection('A');
+                  _goToQuestion(0);
+                }
               },
               icon: Icon(
-                isLastQuestion ? Icons.check_circle : Icons.save,
+                isFinalQuestion ? Icons.check_circle : Icons.save,
                 size: 20,
               ),
               label: FittedBox(
                 child: Text(
-                  isLastQuestion ? 'Submit' : 'Save & Next',
+                  isFinalQuestion ? 'Submit' : 'Save & Next',
                   maxLines: 1,
                   style: labelStyle,
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isLastQuestion ? Colors.red : Colors.green,
+                backgroundColor: isFinalQuestion ? Colors.red : Colors.green,
                 minimumSize: const Size(0, 52),
                 padding: const EdgeInsets.symmetric(horizontal: 2),
               ),
@@ -1047,114 +1101,115 @@ Color _getQuestionTileColor(int index) {
     return count;
   }
 
-Widget _buildLatexText(String text, {double fontSize = 16, Color color = Colors.white}) {
+Widget _buildLatexText(
+  String text, {
+  double fontSize = 16,
+  Color color = Colors.white,
+}) {
   if (text.isEmpty) {
     return Text('', style: TextStyle(fontSize: fontSize, color: color));
   }
-  List<InlineSpan> spans = [];
-  int currentIndex = 0;
+
+  // Sirf literal "\n" ko newline banao
+  text = text.replaceAll(r'\n', '\n');
+
+  final spans = <InlineSpan>[];
+  int index = 0;
+
   final blockMathRegex = RegExp(r'\$\$(.+?)\$\$', dotAll: true);
   final blockMatches = blockMathRegex.allMatches(text).toList();
-  List<int> blockMathPositions = [];
-  for (var match in blockMatches) {
-    blockMathPositions.add(match.start);
-    blockMathPositions.add(match.end);
+  final blockPositions = <int>[];
+  for (final m in blockMatches) {
+    blockPositions.add(m.start);
+    blockPositions.add(m.end);
   }
-  while (currentIndex < text.length) {
-    bool isBlockMath = false;
-    for (var match in blockMatches) {
-      if (currentIndex == match.start) {
-        isBlockMath = true;
-        String mathContent = match.group(1)!.trim();
-        if (mathContent.contains('\\\\')) {
-          mathContent = mathContent.replaceAll('\\\\', '\\');
-        }
-        try {
-          spans.add(WidgetSpan(
+
+  final inlineRegex = RegExp(r'\$(.+?)\$', dotAll: true);
+
+  while (index < text.length) {
+    // block math check
+    bool isBlock = false;
+    for (final m in blockMatches) {
+      if (index == m.start) {
+        isBlock = true;
+        var mathContent = m.group(1)!.trim();
+        mathContent = mathContent.replaceAll('\\\\', '\\');
+        spans.add(
+          WidgetSpan(
             alignment: PlaceholderAlignment.middle,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Math.tex(
                 mathContent,
                 textStyle: TextStyle(fontSize: fontSize + 2, color: color),
               ),
             ),
-          ));
-        } catch (e) {
-          spans.add(TextSpan(
-              text: '[Math Error]',
-              style: TextStyle(fontSize: fontSize - 2, color: Colors.red)));
-        }
-        currentIndex = match.end;
+          ),
+        );
+        index = m.end;
         break;
       }
     }
-    if (isBlockMath) continue;
-    int nextDollar = text.indexOf(r'$', currentIndex);
-    if (nextDollar == -1) {
-      if (currentIndex < text.length) {
-        spans.add(TextSpan(
-            text: text.substring(currentIndex),
-            style: TextStyle(fontSize: fontSize, color: color)));
-      }
+    if (isBlock) continue;
+
+    final match = inlineRegex.firstMatch(text.substring(index));
+    if (match == null) {
+      spans.add(
+        TextSpan(
+          text: text.substring(index),
+          style: TextStyle(fontSize: fontSize, color: color),
+        ),
+      );
       break;
     }
-    if (nextDollar > currentIndex) {
-      spans.add(TextSpan(
-          text: text.substring(currentIndex, nextDollar),
-          style: TextStyle(fontSize: fontSize, color: color)));
+
+    final start = index + match.start;
+    final end = index + match.end;
+
+    if (start > index) {
+      spans.add(
+        TextSpan(
+          text: text.substring(index, start),
+          style: TextStyle(fontSize: fontSize, color: color),
+        ),
+      );
     }
-    bool skipThisDollar = false;
-    for (int pos in blockMathPositions) {
-      if (nextDollar == pos || nextDollar == pos - 1) {
-        skipThisDollar = true;
+
+    bool skipDollar = false;
+    for (final pos in blockPositions) {
+      if (start == pos || start == pos - 1) {
+        skipDollar = true;
         break;
       }
     }
-    if (skipThisDollar) {
-      currentIndex = nextDollar + 1;
+    if (skipDollar) {
+      index = start + 1;
       continue;
     }
-    int closingDollar = text.indexOf(r'$', nextDollar + 1);
-    if (closingDollar == -1) {
-      spans.add(TextSpan(
-          text: text.substring(nextDollar),
-          style: TextStyle(fontSize: fontSize, color: color)));
-      break;
-    }
-    String mathContent = text.substring(nextDollar + 1, closingDollar).trim();
-    if (mathContent.isNotEmpty) {
-      if (mathContent.contains('\\\\')) {
-        mathContent = mathContent.replaceAll('\\\\', '\\');
-      }
-      try {
-        spans.add(WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Math.tex(
-              mathContent,
-              textStyle: TextStyle(fontSize: fontSize, color: color),
-            ),
-          ),
-        ));
-      } catch (e) {
-        spans.add(TextSpan(
-            text: '[Math Error]',
-            style: TextStyle(fontSize: fontSize - 2, color: Colors.red)));
-      }
-    }
-    currentIndex = closingDollar + 1;
+
+    var mathContent = match.group(1)!.trim();
+    mathContent = mathContent.replaceAll('\\\\', '\\');
+
+    spans.add(
+      WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: Math.tex(
+          mathContent,
+          textStyle: TextStyle(fontSize: fontSize, color: color),
+        ),
+      ),
+    );
+
+    index = end;
   }
-  if (spans.isEmpty) {
-    return Text(text, style: TextStyle(fontSize: fontSize, color: color));
-  }
+
   return RichText(
     text: TextSpan(children: spans),
     softWrap: true,
     overflow: TextOverflow.visible,
   );
 }
+
 
 
 }
