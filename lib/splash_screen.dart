@@ -15,18 +15,19 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkSession();
   }
 
-  Future<void> _checkSession() async {
-    // Short delay for splash feeling
-    await Future.delayed(const Duration(seconds: 1));
-    final session = Supabase.instance.client.auth.currentSession;
-    if (session != null) {
-      // User is logged in, go directly to home screen
-      Navigator.of(context).pushReplacementNamed('/home');
-    } else {
-      // No session, go to login
-      Navigator.of(context).pushReplacementNamed('/login');
-    }
+Future<void> _checkSession() async {
+  await Future.delayed(const Duration(seconds: 1));
+  final session = Supabase.instance.client.auth.currentSession;
+
+  if (session != null) {
+    // Sirf jab real session hai tab hi direct home
+    Navigator.of(context).pushReplacementNamed('/home');
+  } else {
+    // Warna sirf yahi karo, OTP flow se manually /home pe jaana rahega
+    Navigator.of(context).pushReplacementNamed('/login');
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

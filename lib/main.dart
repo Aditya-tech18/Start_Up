@@ -1,5 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:saas_new/password_reset_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 
@@ -46,31 +48,32 @@ class _MyAppState extends State<MyApp> {
     super.dispose();
   }
 
-  void _setupAuthListener() {
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
-      (data) {
-        final event = data.event;
-        debugPrint('🔐 [MyApp] Auth Event: $event');
+void _setupAuthListener() {
+  _authSubscription =
+      Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    final event = data.event;
+    debugPrint('🔐 [MyApp] Auth Event: $event');
 
-        if (event == AuthChangeEvent.passwordRecovery) {
-          debugPrint('✅ [MyApp] Password recovery detected - navigating to OTP screen');
-          _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-            '/otp_verification',
-            (route) => route.isFirst,
-            arguments: data.session?.user.email, // Pass email for OTP
-          );
-        }
+    if (event == AuthChangeEvent.passwordRecovery) {
+      debugPrint(
+          '✅ [MyApp] Password recovery detected - navigating to OTP screen');
+      _navigatorKey.currentState?.pushNamed(
+        '/otp_verification',
+        arguments: data.session?.user.email,
+      );
+    }
 
-        if (event == AuthChangeEvent.signedOut) {
-          debugPrint('👤 [MyApp] User signed out - navigating to login');
-          _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-            '/login',
-            (route) => false,
-          );
-        }
-      },
-    );
-  }
+    // ❌ Ye block ABHI ke liye hata do / comment:
+    // if (event == AuthChangeEvent.signedOut) {
+    //   debugPrint('👤 [MyApp] User signed out - navigating to login');
+    //   _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+    //     '/login',
+    //     (route) => false,
+    //   );
+    // }
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +175,11 @@ class _MyAppState extends State<MyApp> {
         '/home': (context) => const HomeScreen(),
         '/subscription': (context) => const SubscriptionScreen(),
         '/pyq_mains': (context) => const PyqChapterListScreen(),
+            '/password_reset': (context) => const PasswordResetScreen(),
+
+    '/otp_verification': (context) => const OtpVerificationScreen(),
+
+
         '/ai_chat': (context) {
           final question = ModalRoute.of(context)!.settings.arguments as PyqQuestion;
           return AiChatScreen(question: question);

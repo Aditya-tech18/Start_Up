@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform; 
+  import 'dart:convert';
+
 
 
 class LoginScreen extends StatefulWidget {
@@ -17,6 +19,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isSignUp = false;
   bool _isLoading = false;
+  bool _isSendingOtp = false;
+
   bool _obscurePassword = true;
   String? _errorMsg;
 
@@ -33,19 +37,29 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// 🔴 NEW: Listen for auth state changes (password recovery deep links)
-  void _setupAuthListener() {
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final event = data.event;
-      
-      if (event == AuthChangeEvent.passwordRecovery) {
-        debugPrint('🔐 Password recovery event detected');
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/home');
-        }
+void _setupAuthListener() {
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    final event = data.event;
+    
+    if (event == AuthChangeEvent.passwordRecovery) {
+      debugPrint('🔐 Password recovery event detected');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(  // ✅ ADD THIS
+          const SnackBar(
+            content: Text('✅ Password recovery link detected'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pushReplacementNamed('/home');
       }
-    });
-  }
+    }
+  });
+}
+
+
+
+
+
 
   /// Validate email format
   String? _validateEmail(String? value) {
@@ -69,39 +83,70 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     return null;
   }
+  String _normalizedEmail() {
+  return _emailController.text.trim().toLowerCase();
+}
+
 
 Future<void> _handleForgotPassword() async {
-  final email = _emailController.text.trim();
+  final email = _normalizedEmail();
+
   if (email.isEmpty || _validateEmail(email) != null) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Please enter a valid email address')),
+      const SnackBar(content: Text('Please enter a valid email address')),
     );
     return;
   }
 
-  setState(() { _isLoading = true; });
+  setState(() {
+    _isLoading = true;
+  });
 
-  // Call your Edge Function via Supabase
   final response = await Supabase.instance.client.functions.invoke(
-    'otp_generator', // Name of your Edge Function
+    'otp_generator',
     body: {'email': email},
   );
-  final resData = response.data;
+
+  final raw = response.data;
+  final Map<String, dynamic> resData =
+      raw is String ? jsonDecode(raw) : raw as Map<String, dynamic>;
 
   if (response.status == 200 && resData['success'] == true) {
+    if (resData['user_exists'] == true) {
+if (mounted) {  // ✅ ADD THIS
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('✅ OTP sent to your email!'), backgroundColor: Colors.green),
+  );
+}
+
+
+      Navigator.of(context).pushNamed(
+        '/otp_verification',
+        arguments: {
+          'email': email,
+          'flow': 'forgot',
+        },
+      );
+} else {
+  if (mounted) {  // ✅ ADD THIS
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ OTP sent to your email!'), backgroundColor: Colors.green),
+      const SnackBar(content: Text('Error: Could not send OTP'), backgroundColor: Colors.red),
     );
-    // Navigate to OTP Verification Screen, pass the email
-    Navigator.of(context).pushNamed('/otp_verification', arguments: email);
+  }
+}
+
   } else {
-    // Show backend error
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: Could not send OTP')),
+      const SnackBar(
+        content: Text('Error: Could not send OTP'),
+        backgroundColor: Colors.red,
+      ),
     );
   }
 
-  setState(() { _isLoading = false; });
+  setState(() {
+    _isLoading = false;
+  });
 }
 
 
@@ -120,30 +165,42 @@ Future<void> _handleAuth() async {
     _errorMsg = null;
   });
 
-  final email = _emailController.text.trim();
+  final email = _normalizedEmail();
   final password = _passwordController.text.trim();
+
 
   try {
     final auth = Supabase.instance.client.auth;
 
     if (_isSignUp) {
       // STEP 1: Send OTP to the user's email before signup
-      final response = await Supabase.instance.client.functions.invoke(
-        'otp_generator',
-        body: {'email': email},
-      );
-      final resData = response.data;
+final response = await Supabase.instance.client.functions.invoke(
+  'otp_generator',
+  body: {'email': email},
+);
+
+final raw = response.data;
+final Map<String, dynamic> resData =
+    raw is String ? jsonDecode(raw) : raw as Map<String, dynamic>;
+
 
       if (response.status == 200 && resData['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ OTP sent! Please verify OTP.'),
-          backgroundColor: Colors.green),
-        );
+if (mounted) {  // ✅ ADD THIS
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('✅ OTP sent! Please verify OTP.'), backgroundColor: Colors.green),
+  );
+}
+
         // Navigate to OTP Verification Screen, pass email and password
-        Navigator.of(context).pushNamed('/otp_verification', arguments: {
-          'email': email,
-          'password': password,
-        });
+Navigator.of(context).pushNamed(
+  '/otp_verification',
+  arguments: {
+    'email': email,
+    'password': password,
+    'flow': 'signup',  // ✅ isse OTP screen ko pata rahega ye signup waala step hai
+  },
+);
+
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: Could not send OTP')),

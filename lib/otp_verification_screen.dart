@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class OtpVerificationScreen extends StatefulWidget {
   const OtpVerificationScreen({Key? key}) : super(key: key);
+  
+
 
   @override
   State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
@@ -15,66 +19,171 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   bool _isVerifying = false;
   String? _errorMsg;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final args = ModalRoute.of(context)!.settings.arguments;
-    if (args is String) {
-      email = args;
-      password = null;
-    } else if (args is Map<String, dynamic>) {
-      email = args['email'];
-      password = args['password'];
-    }
+String _flow = 'forgot';
+
+
+@override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+  final args = ModalRoute.of(context)?.settings.arguments;
+
+if (args is String) {
+  email = args;
+  password = null;
+  _flow = 'forgot';
+} else if (args is Map<String, dynamic>) {
+  email = args['email'] as String?;
+  password = args['password'] as String?;
+  
+  // ✅ FLOW VALIDATION
+  final flowArg = args['flow'] as String?;
+  if (flowArg == 'signup' || flowArg == 'forgot') {
+    _flow = flowArg!;
+  } else {
+    _flow = 'forgot';
+  }
+}
+
+}
+
+
+
+Future<void> _verifyOtp() async {
+  // ✅ CHANGE #1: EARLY VALIDATION (BEFORE loading state)
+  final otp = _otpController.text.trim();
+  if (otp.isEmpty) {
+    setState(() => _errorMsg = "Please enter OTP.");
+    return;
   }
 
-  Future<void> _verifyOtp() async {
-    final otp = _otpController.text.trim();
-    if (otp.isEmpty) {
-      setState(() => _errorMsg = "Please enter OTP.");
-      return;
-    }
-    setState(() {
-      _errorMsg = null;
-      _isVerifying = true;
-    });
+  final String? currentEmail = email?.trim().toLowerCase();
+  if (currentEmail == null || currentEmail.isEmpty) {
+    setState(() => _errorMsg = "Email missing for OTP verification.");
+    return;
+  }
 
-    // Call your edge function to validate OTP
-    final response = await Supabase.instance.client.functions.invoke(
+  // ✅ CHANGE #2: PASSWORD CHECK FOR SIGNUP (CRITICAL FIX)
+  if (_flow == 'signup' && (password == null || password!.isEmpty)) {
+    setState(() => _errorMsg = "Password missing for signup. Please restart.");
+    return;
+  }
+
+  // ✅ NOW set loading state
+  setState(() {
+    _errorMsg = "";
+    _isVerifying = true;
+  });
+
+  try {
+    final client = Supabase.instance.client;
+    final res = await client.functions.invoke(
       'verify_otp',
-      body: {'email': email, 'otp': otp},
+      body: {'email': currentEmail, 'otp': otp},
     );
 
-    final data = response.data;
-    if (response.status == 200 && data['valid'] == true) {
-      // If sign up, complete registration after OTP verified
-      if (password != null && password!.isNotEmpty) {
-        final signUpRes = await Supabase.instance.client.auth.signUp(
-          email: email!,
-          password: password!,
-        );
-        if (signUpRes.user != null) {
-          Navigator.of(context).pushNamedAndRemoveUntil('/home', (r) => false);
-          return;
-        } else {
-          setState(() => _errorMsg = 'Account creation failed. Try again.');
-        }
-      } else {
-        // For forgot password or login flow, just navigate home
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (r) => false);
-        return;
-      }
-    } else {
-      setState(() => _errorMsg = "Invalid or expired OTP!");
+    // ✅ CHANGE #3: SAFE STATUS CHECK
+    final status = res.status ?? 500;
+    if (status != 200) {
+      setState(() {
+        _errorMsg = "Request failed with status $status";
+        _isVerifying = false;
+      });
+      return;
     }
-    setState(() => _isVerifying = false);
-  }
 
-  @override
-  void dispose() {
-    _otpController.dispose();
-    super.dispose();
+    // ✅ CHANGE #4: SAFE RESPONSE PARSING
+    final Map<String, dynamic> body;
+    try {
+      if (res.data is String) {
+        body = jsonDecode(res.data as String) as Map<String, dynamic>;
+      } else if (res.data is Map) {
+        body = (res.data as Map).cast<String, dynamic>();
+      } else {
+        throw Exception('Unexpected response type: ${res.data.runtimeType}');
+      }
+    } catch (e) {
+      setState(() {
+        _errorMsg = "Failed to parse server response: $e";
+        _isVerifying = false;
+      });
+      return;
+    }
+
+    if (body['valid'] != true) {
+      setState(() {
+        _errorMsg = body['reason']?.toString() ?? "Invalid or expired OTP.";
+        _isVerifying = false;
+      });
+      return;
+    }
+
+    // ✅ OTP verified - Check flow type
+    if (!mounted) return;
+
+    if (_flow == 'forgot') {
+      Navigator.of(context).pushReplacementNamed(
+        '/password_reset',
+        arguments: {'email': currentEmail},
+      );
+    } else if (_flow == 'signup') {
+      // ✅ CHANGE #5: CALL NEW SAFE SIGNUP METHOD
+      await _completeSignup(currentEmail!, password!);
+    }
+  } catch (e) {
+    setState(() {
+      _errorMsg = "OTP verification error: $e";
+      _isVerifying = false;
+    });
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isVerifying = false;
+      });
+    }
   }
+}
+
+
+
+Future<void> _completeSignup(String email, String password) async {
+  try {
+    final client = Supabase.instance.client;
+    
+    if (password.length < 6) {
+      setState(() {
+        _errorMsg = "Password must be at least 6 characters.";
+        _isVerifying = false;
+      });
+      return;
+    }
+
+    final authResponse = await client.auth.signUp(
+      email: email,
+      password: password,  // ✅ SAFE
+    );
+
+    if (authResponse.user != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Account created successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pushReplacementNamed('/home');
+    }
+  } on AuthException catch (authError) {
+    setState(() {
+      _errorMsg = 'Signup error: ${authError.message}';
+      _isVerifying = false;
+    });
+  } catch (e) {
+    setState(() {
+      _errorMsg = "Signup failed: $e";
+      _isVerifying = false;
+    });
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {

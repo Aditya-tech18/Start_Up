@@ -109,133 +109,143 @@ const List<Map<String, dynamic>> rankStructure = [
 class RankStructureSheet extends StatelessWidget {
   const RankStructureSheet({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.85,
-      minChildSize: 0.4,
-      maxChildSize: 0.92,
-      builder: (_, controller) => Material(
-        color: const Color(0xFF181A22),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 44,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.grey[700],
-                borderRadius: BorderRadius.circular(6),
-              ),
+@override
+Widget build(BuildContext context) {
+  return DraggableScrollableSheet(
+    initialChildSize: 0.85,
+    minChildSize: 0.4,
+    maxChildSize: 0.92,
+    builder: (_, controller) => Material(
+      color: const Color(0xFF181A22),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          // ✅ Drag indicator handle
+          Container(
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey[700],
+              borderRadius: BorderRadius.circular(6),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'ðŸŒŸ THE PATH TO MASTERY ðŸŒŸ',
-              style: TextStyle(
-                fontSize: 20,
-                color: Color(0xFFFFD600),
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-              ),
+          ),
+          const SizedBox(height: 12),
+          // ✅ Title
+          const Text(
+            ' THE PATH TO MASTERY ',
+            style: TextStyle(
+              fontSize: 20,
+              color: Color(0xFFFFD600),
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1,
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.separated(
-                controller: controller,
-                itemCount: rankStructure.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 16),
-                itemBuilder: (ctx, i) {
-                  final rk = rankStructure[i];
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF23253A),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: Colors.amber.withOpacity(0.18),
-                        width: 1.1,
+          ),
+          const SizedBox(height: 12),
+          // ✅ Rank list
+          Expanded(
+            child: ListView.separated(
+              controller: controller,
+              itemCount: rankStructure.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              itemBuilder: (ctx, i) {
+                final rk = rankStructure[i];
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF23253A),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.amber.withOpacity(0.18),
+                      width: 1.1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF7D3EFF).withOpacity(0.10),
+                        blurRadius: 9,
+                        offset: const Offset(0, 4),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF7D3EFF).withOpacity(0.10),
-                          blurRadius: 9,
-                          offset: const Offset(0, 4),
+                    ],
+                  ),
+                  child: ListTile(
+                    // ✅ Badge image
+                    leading: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        image: DecorationImage(
+                          image: AssetImage(rk['badge']),
+                          fit: BoxFit.contain,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        border:
+                            Border.all(color: Colors.amber.withOpacity(0.23)),
+                        color: i == rankStructure.length - 1
+                            ? Colors.deepPurple[300]
+                            : Colors.blueGrey[800],
+                      ),
+                    ),
+                    // ✅ Rank name
+                    title: Text(
+                      rk['name'],
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 18,
+                        letterSpacing: 0.7,
+                      ),
+                    ),
+                    // ✅ Description
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        rk['desc'],
+                        style: const TextStyle(
+                          color: Color(0xFFE57C23), // orange
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    // ✅ Trailing: checkmark + min questions
+                    trailing: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.greenAccent,
+                          size: 19,
+                        ),
+                        Text(
+                          '${rk['min']}+ Qs',
+                          style: const TextStyle(
+                            color: Colors.amber,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13.7,
+                          ),
                         ),
                       ],
                     ),
-                    child: ListTile(
-                      leading: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: AssetImage(rk['badge']),
-                            fit: BoxFit.contain,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                          border:
-                              Border.all(color: Colors.amber.withOpacity(0.23)),
-                          color: i == rankStructure.length - 1
-                              ? Colors.deepPurple[300]
-                              : Colors.blueGrey[800],
-                        ),
-                      ),
-                      title: Text(
-                        rk['name'],
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          fontSize: 18,
-                          letterSpacing: 0.7,
-                        ),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          rk['desc'],
-                          style: const TextStyle(
-                            color: Colors.yellowAccent,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      trailing: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.check_circle,
-                              color: Colors.greenAccent, size: 19),
-                          Text(
-                            '${rk['min']}+ Qs',
-                            style: const TextStyle(
-                              color: Colors.amber,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13.7,
-                            ),
-                          ),
-                        ],
-                      ),
-                      isThreeLine: true,
-                    ),
-                  );
-                },
-              ),
+                    isThreeLine: true,
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          ),
+          const SizedBox(height: 20),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 }
 
 bool isLoading = true;
 bool hasAccess = false;
 bool isFeatureCardBusy = false;
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -249,25 +259,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _hasNavigatedToLogin = false;
 
   Map<String, int> subjectTotals = {
-    "physics": 0,
-    "chemistry": 0,
-    "maths": 0,
+    "Physics": 0,
+    "Chemistry": 0,
+    "Mathematics": 0,
   };
+
   Map<String, int> subjectSolved = {
-    "physics": 0,
-    "chemistry": 0,
-    "maths": 0,
+    "Physics": 0,
+    "Chemistry": 0,
+    "Mathematics": 0,
   };
 
   Map<DateTime, int> activityMap = {};
   bool isLoading = true;
   String? userId;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _getUserIdAndFetchStats();
-    _checkSubscriptionStatus();
+    _ensureLoggedInAndLoad(); // ✅ ek hi entry point
   }
 
   @override
@@ -283,71 +294,129 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+// File: lib/screens/home_screen.dart
+
+Future<void> _ensureLoggedInAndLoad() async {
+  // ✅ FEW MILLISECONDS KA DELAY - Session को synchronize होने का time do
+  await Future.delayed(const Duration(milliseconds: 500));
+  
+  final user = Supabase.instance.client.auth.currentUser;
+  print('HomeScreen currentUser after delay: $user');
+
+  if (user == null) {
+    setState(() {
+      isLoading = false;
+      // baaki stats empty rehne do
+    });
+    return;
+  }
+
+  // user mila → stats/subscription load karo
+  userId = user.id;
+  await fetchStats();
+  await _checkSubscriptionStatus();
+}
+
+
+
+
+  /// Optional helper: agar kahin aur se call karna ho
   Future<void> _getUserIdAndFetchStats() async {
-    userId = Supabase.instance.client.auth.currentUser?.id;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    userId = user.id;
     await fetchStats();
   }
 
   Future<void> fetchStats() async {
+    // ❗ agar userId null hai to koi query hi mat chalao
+    if (userId == null || userId!.isEmpty) {
+      setState(() {
+        isLoading = false;
+        totalQuestions = 0;
+        solvedQuestions = 0;
+        subjectTotals = {
+          "Physics": 0,
+          "Chemistry": 0,
+          "Mathematics": 0,
+        };
+        subjectSolved = {
+          "Physics": 0,
+          "Chemistry": 0,
+          "Mathematics": 0,
+        };
+        activityMap.clear();
+      });
+      return;
+    }
+
     setState(() => isLoading = true);
     final client = Supabase.instance.client;
 
+    // 1) QUESTIONS TABLE
     final totalQRes = await client.from('questions').select('subject');
-    if (totalQRes != null) {
-      totalQuestions = (totalQRes as List).length;
-      subjectTotals = {"physics": 0, "chemistry": 0, "maths": 0};
-      for (var row in (totalQRes as List)) {
-        final subject = (row['subject'] ?? '').toString().toLowerCase();
+
+    subjectTotals = {
+      "Physics": 0,
+      "Chemistry": 0,
+      "Mathematics": 0,
+    };
+
+    if (totalQRes != null && totalQRes is List) {
+      for (var row in totalQRes) {
+        final subject = (row['subject'] ?? '').toString();
         if (subjectTotals.containsKey(subject)) {
           subjectTotals[subject] = (subjectTotals[subject] ?? 0) + 1;
         }
       }
     }
 
+    totalQuestions = subjectTotals.values.fold(0, (prev, val) => prev + val);
+
+    // 2) SUBMISSIONS TABLE
     final solvedQRes = await client
         .from('submissions')
         .select('question_id, submitted_at')
-        .eq('user_id', userId ?? '');
-
-    final solvedQuestionsSet = <int>{};
-    if (solvedQRes != null && solvedQRes is List) {
-      for (var submission in solvedQRes) {
-        final qid = submission['question_id'];
-        if (qid != null) {
-          solvedQuestionsSet.add(qid as int);
-        }
-      }
-    }
-    solvedQuestions = solvedQuestionsSet.length;
-
-    subjectSolved = {"physics": 0, "chemistry": 0, "maths": 0};
+        .eq('user_id', userId as Object); // ✅ valid uuid only
 
     final solvedQuestionIdSet = <int>{};
-    if (solvedQRes != null && (solvedQRes as List).isNotEmpty) {
-      // Make a set of unique question IDs solved by the user
-      for (var entry in (solvedQRes as List)) {
-        final qid = entry['question_id'];
+
+    if (solvedQRes != null && solvedQRes is List) {
+      for (var row in solvedQRes) {
+        final qid = row['question_id'];
         if (qid != null) solvedQuestionIdSet.add(qid as int);
       }
     }
-// Query subject for these unique question IDs only
+
+    // 3) SUBJECT-WISE SOLVED COUNTS
+    subjectSolved = {
+      "Physics": 0,
+      "Chemistry": 0,
+      "Mathematics": 0,
+    };
+
     if (solvedQuestionIdSet.isNotEmpty) {
       final questionsRes = await client
           .from('questions')
           .select('id, subject')
           .filter('id', 'in', solvedQuestionIdSet.toList());
-      // One question per subject per subjectSolved count
-      for (var row in (questionsRes as List)) {
-        final subj = (row['subject'] ?? '').toString().toLowerCase();
-        if (subjectSolved.containsKey(subj)) {
-          subjectSolved[subj] = (subjectSolved[subj] ?? 0) + 1;
+
+      if (questionsRes != null && questionsRes is List) {
+        for (var row in questionsRes) {
+          final subject = (row['subject'] ?? '').toString();
+          if (subjectSolved.containsKey(subject)) {
+            subjectSolved[subject] = (subjectSolved[subject] ?? 0) + 1;
+          }
         }
       }
     }
 
+    solvedQuestions = subjectSolved.values.fold(0, (prev, val) => prev + val);
+
+    // 4) ACTIVITY MAP
     activityMap.clear();
-    if (solvedQRes != null) {
-      for (var row in (solvedQRes as List)) {
+    if (solvedQRes != null && solvedQRes is List) {
+      for (var row in solvedQRes) {
         if (row['submitted_at'] == null) continue;
         final date =
             DateTime.tryParse(row['submitted_at'].toString())?.toLocal();
@@ -370,21 +439,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _checkSubscriptionStatus() async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
     final email = Supabase.instance.client.auth.currentUser?.email;
-    if (userId == null || email == null) {
+
+    if (uid == null || email == null) {
       setState(() => hasAccess = false);
       return;
     }
+
     final result = await Supabase.instance.client
         .from('subscriptions')
         .select('valid_until')
-        .eq('user_id', userId)
+        .eq('user_id', uid)
         .maybeSingle();
+
     if (result != null && result['valid_until'] != null) {
       final expiry = DateTime.tryParse(result['valid_until']);
       setState(
-          () => hasAccess = expiry != null && expiry.isAfter(DateTime.now()));
+        () => hasAccess = expiry != null && expiry.isAfter(DateTime.now()),
+      );
     } else {
       setState(() => hasAccess = false);
     }
@@ -394,135 +467,126 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await _checkSubscriptionStatus();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-            ),
-          );
-        }
 
-        final session = snapshot.data?.session;
-
-        if (session == null) {
-          if (!_hasNavigatedToLogin) {
-            _hasNavigatedToLogin = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.of(context).pushReplacementNamed('/login');
-            });
+@override
+Widget build(BuildContext context) {
+  return StreamBuilder<AuthState>(
+    stream: Supabase.instance.client.auth.onAuthStateChange,
+    builder: (context, snapshot) {
+      // ✅ SIRF logout event handle kar
+      if (snapshot.hasData &&
+          snapshot.data?.event == AuthChangeEvent.signedOut) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/login',
+              (route) => false,
+            );
           }
-          return Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-            ),
-          );
-        }
+        });
+      }
 
-        if (userId == null) {
-          userId = session.user.id;
-          _getUserIdAndFetchStats();
-        }
-
-        if (isLoading) {
-          return Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(color: const Color(0xFFE57C23)),
-            ),
-          );
-        }
-
-        return Scaffold(
-          appBar: AppBar(
-            toolbarHeight: 50,
-            elevation: 0,
-            backgroundColor: const Color(0xFF0A0E21),
-            title: const Text('Home'),
-            centerTitle: true,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.logout),
-                tooltip: 'Logout',
-                onPressed: () async {
-                  await Supabase.instance.client.auth.signOut();
-                  if (mounted) {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/login',
-                      (route) => false,
-                    );
-                  }
-                },
-              ),
-            ],
+      // ✅ isLoading check (from _ensureLoggedInAndLoad)
+      if (isLoading) {
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(color: Color(0xFFE57C23)),
           ),
-          body: Stack(
-            children: [
-              Positioned.fill(
-                child: Image.asset(
-                  'assets/pexels-marek-piwnicki-3907296-11513053.jpg',
-                  fit: BoxFit.cover,
-                  color: Colors.black.withOpacity(0.5),
-                  colorBlendMode: BlendMode.darken,
-                ),
+        );
+      }
+
+      // ✅ Render UI - NO session checks
+      return Scaffold(
+        appBar: AppBar(
+          toolbarHeight: 50,
+          elevation: 0,
+          backgroundColor: const Color(0xFF0A0E21),
+          title: null,
+          centerTitle: false,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Logout',
+              onPressed: () async {
+                await Supabase.instance.client.auth.signOut();
+                if (mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/login',
+                    (route) => false,
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/pexels-marek-piwnicki-3907296-11513053.jpg',
+                fit: BoxFit.cover,
+                color: Colors.black.withOpacity(0.5),
+                colorBlendMode: BlendMode.darken,
               ),
-              SingleChildScrollView(
-                padding: const EdgeInsets.only(
-                    bottom: 60, top: 0, left: 14, right: 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 12),
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 10.0),
-                        child: Text(
-                          '"The best way to predict the future is to create it."',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Color.fromARGB(255, 176, 137, 39),
-                            fontStyle: FontStyle.italic,
-                            fontWeight: FontWeight.w500,
-                          ),
+            ),
+            SingleChildScrollView(
+              padding: const EdgeInsets.only(
+                bottom: 60,
+                top: 0,
+                left: 14,
+                right: 14,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10.0),
+                      child: Text(
+                        '"The best way to predict the future is to create it."',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Color.fromARGB(255, 176, 137, 39),
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    _buildLeetCodeStyleStatus(),
-                    const SizedBox(height: 40),
-                    Text('Submissions in the past year',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
-                    const SizedBox(height: 12),
-                    ActivityHeatmap(activityMap: activityMap),
-                    const SizedBox(height: 28),
-                    Text('Explore Core Features',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
-                    const SizedBox(height: 14),
-                    _buildFeatureCardsGrid(context),
-                    const SizedBox(height: 28),
-                    Text('Community Feed',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
-                    const SizedBox(height: 12),
-                    _buildActivityFeedItem(
-                        context, 'Welcome! Start your first challenge.'),
-                    _buildActivityFeedItem(
-                        context, 'Connect with your first mentor!'),
-                    const SizedBox(height: 40),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildLeetCodeStyleStatus(),
+                  const SizedBox(height: 40),
+                  Text(
+                    'Submissions in the past year',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  ActivityHeatmap(activityMap: activityMap),
+                  const SizedBox(height: 28),
+                  Text(
+                    'Explore Core Features',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildFeatureCardsGrid(context),
+                  const SizedBox(height: 40),
+                ],
               ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 
   Widget _buildLeetCodeStyleStatus() {
     const double circleSize = 105;
@@ -530,10 +594,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final double percentSolved =
         totalQuestions > 0 ? solvedQuestions / totalQuestions : 0.0;
+
     final int safeSolved = solvedQuestions == 0 ? 1 : solvedQuestions;
-    final double physicsPct = (subjectSolved["physics"] ?? 0) / safeSolved;
-    final double chemistryPct = (subjectSolved["chemistry"] ?? 0) / safeSolved;
-    final double mathsPct = (subjectSolved["maths"] ?? 0) / safeSolved;
+
+    final double physicsPct = (subjectSolved["Physics"] ?? 0) / safeSolved;
+    final double chemistryPct = (subjectSolved["Chemistry"] ?? 0) / safeSolved;
+    final double mathsPct = (subjectSolved["Mathematics"] ?? 0) / safeSolved;
 
     const Map<String, Color> subjectColors = {
       "physics": Color(0xFF12D6E8),
@@ -541,7 +607,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       "maths": Color(0xFF7D3EFF),
     };
 
-    // Uses your above-defined rankStructure data and getRankStatus:
     final Map<String, dynamic> rankStatus = getRankStatus(solvedQuestions);
 
     return SingleChildScrollView(
@@ -666,8 +731,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Expanded(
                         child: _buildRectBox(
                           subject: "Physics",
-                          solved: subjectSolved["physics"] ?? 0,
-                          total: subjectTotals["physics"] ?? 0,
+                          solved: subjectSolved["Physics"] ?? 0,
+                          total: subjectTotals["Physics"] ?? 0,
                           color: subjectColors["physics"]!,
                         ),
                       ),
@@ -675,8 +740,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       Expanded(
                         child: _buildRectBox(
                           subject: "Chemistry",
-                          solved: subjectSolved["chemistry"] ?? 0,
-                          total: subjectTotals["chemistry"] ?? 0,
+                          solved: subjectSolved["Chemistry"] ?? 0,
+                          total: subjectTotals["Chemistry"] ?? 0,
                           color: subjectColors["chemistry"]!,
                         ),
                       ),
@@ -689,8 +754,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       width: 120,
                       child: _buildRectBox(
                         subject: "Maths",
-                        solved: subjectSolved["maths"] ?? 0,
-                        total: subjectTotals["maths"] ?? 0,
+                        solved: subjectSolved["Mathematics"] ?? 0,
+                        total: subjectTotals["Mathematics"] ?? 0,
                         color: subjectColors["maths"]!,
                       ),
                     ),
@@ -706,7 +771,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Badge with GOLDEN GLOW based on current rank
                   Container(
                     width: 110,
                     height: 110,
@@ -744,7 +808,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Rank Text
                   Text(
                     rankStatus['name'],
                     style: const TextStyle(
@@ -755,17 +818,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 4),
-                  // Rank Label
                   Text(
                     'Rank',
                     style: TextStyle(
-                      color: Color(0xFFA9A9A9).withOpacity(0.85),
+                      color: const Color(0xFFA9A9A9).withOpacity(0.85),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  // Motivational description
                   Text(
                     rankStatus['desc'],
                     style: const TextStyle(
@@ -776,10 +837,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
-                  // Display Rank Structure button
                   ElevatedButton.icon(
-                    icon: const Icon(Icons.military_tech,
-                        color: Colors.orangeAccent),
+                    icon: const Icon(
+                      Icons.military_tech,
+                      color: Colors.orangeAccent,
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[900],
                       foregroundColor: Colors.amber[400],
@@ -787,7 +849,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           horizontal: 14, vertical: 8),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
-                        side: const BorderSide(color: Colors.amber, width: 1.7),
+                        side: const BorderSide(
+                          color: Colors.amber,
+                          width: 1.7,
+                        ),
                       ),
                       elevation: 2,
                     ),
@@ -858,210 +923,187 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-Widget _buildFeatureCardsGrid(BuildContext context) {
-  final double cardSize = 110;
+  Widget _buildFeatureCardsGrid(BuildContext context) {
+    final double cardSize = 110;
 
-  final List<Map<String, dynamic>> features = [
-    {
-      'title': 'PYQ Mains',
-      'icon': Icons.lightbulb_outline,
-      'color1': const Color(0xFFE57C23),
-      'color2': const Color(0xFFFF9800),
-'navigate': () => Navigator.of(context).push(
-  MaterialPageRoute(
-    builder: (_) => const PyqChapterListScreen(),
-  ),
-),
+    final List<Map<String, dynamic>> features = [
+      {
+        'title': 'PYQ Mains',
+        'icon': Icons.lightbulb_outline,
+        'color1': const Color(0xFFE57C23),
+        'color2': const Color(0xFFFF9800),
+        'navigate': () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const PyqChapterListScreen(),
+              ),
+            ),
+      },
+      {
+        'title': 'Mock Test',
+        'icon': Icons.timer_outlined,
+        'color1': const Color(0xFF00C0A4),
+        'color2': const Color(0xFF1976D2),
+        'navigate': () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => MockTestListScreen()),
+            ),
+      },
+    ];
 
-    },
-    {
-      'title': 'Mock Test',
-      'icon': Icons.timer_outlined,
-      'color1': const Color(0xFF00C0A4),
-      'color2': const Color(0xFF1976D2),
-      'navigate': () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => MockTestListScreen()),
-      ),
-    },
-  ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        height: 210, // zyada vertical space → cards tall + centred
+        child: GridView.builder(
+          shrinkWrap: true,
+          itemCount: features.length,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 20, // cards ke beech thoda gap
+            mainAxisSpacing: 0,
+            childAspectRatio: 1.15, // width ≈ height, premium card look
+          ),
+          itemBuilder: (context, index) {
+            final feature = features[index];
 
-return Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 16),
-  child: SizedBox(
-    height: 210, // zyada vertical space → cards tall + centred
-    child: GridView.builder(
-      shrinkWrap: true,
-      itemCount: features.length,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 20, // cards ke beech thoda gap
-        mainAxisSpacing: 0,
-        childAspectRatio: 1.15, // width ≈ height, premium card look
-      ),
-      itemBuilder: (context, index) {
-        final feature = features[index];
-
-        VoidCallback onTap = () async {
-          if (isFeatureCardBusy) return;
-          setState(() {
-            isFeatureCardBusy = true;
-          });
-          try {
-            if (hasAccess) {
-              feature['navigate']();
-            } else {
-              final paid = await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const SubscriptionScreen(),
-                ),
-              );
-              if (paid == true) {
-                await refreshSubscriptionStatus();
-                await _getUserIdAndFetchStats();
+            VoidCallback onTap = () async {
+              if (isFeatureCardBusy) return;
+              setState(() {
+                isFeatureCardBusy = true;
+              });
+              try {
                 if (hasAccess) {
                   feature['navigate']();
+                } else {
+                  final paid = await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const SubscriptionScreen(),
+                    ),
+                  );
+                  if (paid == true) {
+                    await refreshSubscriptionStatus();
+                    await _getUserIdAndFetchStats();
+                    if (hasAccess) {
+                      feature['navigate']();
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Payment cancelled or failed. Please try again to unlock access.',
+                        ),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  }
                 }
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Payment cancelled or failed. Please try again to unlock access.',
-                    ),
-                    backgroundColor: Colors.red,
-                    duration: Duration(seconds: 3),
-                  ),
-                );
+              } finally {
+                setState(() {
+                  isFeatureCardBusy = false;
+                });
               }
-            }
-          } finally {
-            setState(() {
-              isFeatureCardBusy = false;
-            });
-          }
-        };
+            };
 
-        return _buildColorfulGridCard(
-          context,
-          feature['title'],
-          feature['icon'] as IconData,
-          feature['color1'] as Color,
-          feature['color2'] as Color,
-          onTap: onTap,
-          isBusy: isFeatureCardBusy,
-        );
-      },
-    ),
-  ),
-);
-}
-
-
-Widget _buildColorfulGridCard(
-  BuildContext context,
-  String title,
-  IconData icon,
-  Color color1,
-  Color color2, {
-  VoidCallback? onTap,
-  bool isBusy = false,
-}) {
-  return Stack(
-    children: [
-      Opacity(
-        opacity: isBusy ? 0.6 : 1.0,
-        child: AbsorbPointer(
-          absorbing: isBusy,
-          child: Material(
-            borderRadius: BorderRadius.circular(16),
-            elevation: 3,
-            color: Colors.transparent,
-            child: InkWell(
+            return _buildColorfulGridCard(
+              context,
+              feature['title'],
+              feature['icon'] as IconData,
+              feature['color1'] as Color,
+              feature['color2'] as Color,
               onTap: onTap,
+              isBusy: isFeatureCardBusy,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColorfulGridCard(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color color1,
+    Color color2, {
+    VoidCallback? onTap,
+    bool isBusy = false,
+  }) {
+    return Stack(
+      children: [
+        Opacity(
+          opacity: isBusy ? 0.6 : 1.0,
+          child: AbsorbPointer(
+            absorbing: isBusy,
+            child: Material(
               borderRadius: BorderRadius.circular(16),
-              child: Ink(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    colors: [color1.withOpacity(0.95), color2],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color2.withOpacity(0.30),
-                      blurRadius: 8,
-                      spreadRadius: 1,
+              elevation: 3,
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(16),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [color1.withOpacity(0.95), color2],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: color2.withOpacity(0.30),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12.0, vertical: 18.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, size: 38, color: Colors.white),
+                        const SizedBox(height: 12),
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Access',
+                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-child: Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 18.0),
-  child: Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      Icon(icon, size: 38, color: Colors.white),
-      const SizedBox(height: 12),
-      Text(
-        title,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 15,
-          fontWeight: FontWeight.bold,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      const SizedBox(height: 8),
-      const Text(
-        'Access',
-        style: TextStyle(color: Colors.white70, fontSize: 11),
-      ),
-    ],
-  ),
-),
               ),
             ),
           ),
         ),
-      ),
-      if (isBusy)
-        Positioned.fill(
-          child: Center(
-            child: SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        if (isBusy)
+          Positioned.fill(
+            child: Center(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
               ),
             ),
           ),
-        ),
-    ],
-  );
-}
-
-
-  Widget _buildActivityFeedItem(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.star, color: Color(0xFF00C0A4), size: 16),
-            const SizedBox(width: 8),
-            Text(title,
-                style: const TextStyle(color: Colors.white70, fontSize: 13)),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models_mock_test.dart';
@@ -16,6 +17,8 @@ class _MockTestPaperScreenState extends State<MockTestPaperScreen> {
   String _currentSubject = 'Physics';
   String _currentSection = 'A'; // 'A' = MCQ (20 Qs), 'B' = Integer (10 Qs)
   int _currentQuestionIndex = 0;
+  Map<String, Map<String, TextEditingController>> _sectionBControllers = {};
+
 
   Map<String, Map<String, List<Question>>> _questions = {};
   Map<String, Map<String, List<QuestionAnswer?>>> _answers = {};
@@ -77,95 +80,114 @@ class _MockTestPaperScreenState extends State<MockTestPaperScreen> {
 
 Future<void> _fetchQuestionsFromSupabase() async {
   try {
-    // 1) Primary shift questions (tumhara existing range)
-    final response = await Supabase.instance.client
+    // ================= 2 APRIL 2025 SHIFT 2 =================
+    final primaryRes = await Supabase.instance.client
         .from('questions')
         .select()
         .gte('id', 202524200)
-        .lte('id', 202524999)
-        .order('id', ascending: true);
+        .lte('id', 202524299)
+        .order('id');
 
-    if (response == null || response is! List || response.isEmpty) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'No questions found for this exam';
-      });
-      return;
+    final primary =
+        (primaryRes as List).map((e) => Question.fromJson(e)).toList();
+
+    // ================= 4 APRIL 2025 SHIFT 1 =================
+    Future<List<Question>> fetchSecondary(int from, int to) async {
+      final res = await Supabase.instance.client
+          .from('questions')
+          .select()
+          .gte('id', from)
+          .lte('id', to)
+          .order('id');
+
+      return (res as List).map((e) => Question.fromJson(e)).toList();
     }
 
-    List<Question> allQuestions = (response as List)
-        .map((json) {
-          try {
-            return Question.fromJson(json);
-          } catch (_) {
-            return null;
-          }
-        })
-        .whereType<Question>()
-        .toList();
-
-    // 2) Extra integer questions from anywhere in DB
-    //    (yahan tum koi bhi condition laga sakte ho:
-    //     same year, different shift, etc.)
-    final extraResp = await Supabase.instance.client
-        .from('questions')
-        .select()
-        .gte('id', 202524200); // <= yahi tumne bola "starting from 2025242"
-
-    final extraAll = (extraResp as List?)
-            ?.map((json) {
-              try {
-                return Question.fromJson(json);
-              } catch (_) {
-                return null;
-              }
-            })
-            .whereType<Question>()
-            .toList() ??
-        [];
+    final secPhysics = await fetchSecondary(20244556, 20244560);
+    final secChemistry = await fetchSecondary(20244486, 20244490);
+    final secMaths = await fetchSecondary(2024404126, 2024404130);
 
     for (final subject in _subjects) {
-      // ---- Subject specific lists from primary shift ----
-      List<Question> subjectQuestions = allQuestions
-          .where((q) => q.subject.toLowerCase() == subject.toLowerCase())
+      final p = primary
+          .where(
+              (q) => q.subject.trim().toLowerCase() == subject.toLowerCase())
           .toList();
 
-      List<Question> sectionAQuestions = subjectQuestions
-          .where((q) => q.optionsList != null && q.optionsList!.isNotEmpty)
-          .toList();
+      // ================= SECTION A (MCQ) =================
+      List<Question> sectionA = p.where((q) {
+        final opts = q.optionsList;
+        return opts != null && opts.isNotEmpty;
+      }).toList();
 
-      List<Question> sectionBPrimary = subjectQuestions
-          .where((q) => q.optionsList == null || q.optionsList!.isEmpty)
-          .toList();
-
-      // ---- Top‑up Section B with extra integers ----
-      List<Question> sectionB = List.from(sectionBPrimary);
-      int needed = 10 - sectionB.length;
-      if (needed > 0) {
-        // extra integers of SAME subject, not already used
-        final extraIntegers = extraAll
-            .where((q) =>
-                q.subject.toLowerCase() == subject.toLowerCase() &&
-                (q.optionsList == null || q.optionsList!.isEmpty) &&
-                !sectionBPrimary.any((p) => p.id == q.id))
+      if (sectionA.length < 20) {
+        final extraMCQ = (subject == 'Physics'
+                ? secPhysics
+                : subject == 'Chemistry'
+                    ? secChemistry
+                    : secMaths)
+            .where((q) => q.optionsList != null && q.optionsList!.isNotEmpty)
+            .take(20 - sectionA.length)
             .toList();
 
-        extraIntegers.shuffle();
-        sectionB.addAll(extraIntegers.take(needed));
+        sectionA.addAll(extraMCQ);
       }
 
-      _questions[subject]!['A'] = sectionAQuestions.take(20).toList();
-      _questions[subject]!['B'] = sectionB.take(10).toList();
+      sectionA = sectionA.take(20).toList();
+
+      // ================= SECTION B (INTEGER) =================
+      final primaryInts = p
+          .where((q) => q.optionsList == null || q.optionsList!.isEmpty)
+          .take(5)
+          .toList();
+
+      final secondaryInts = (subject == 'Physics'
+              ? secPhysics
+              : subject == 'Chemistry'
+                  ? secChemistry
+                  : secMaths)
+          .where((q) => q.optionsList == null || q.optionsList!.isEmpty)
+          .take(5)
+          .toList();
+
+      final sectionB = [...primaryInts, ...secondaryInts];
+
+      // Store questions
+      _questions[subject] = {
+        'A': sectionA,
+        'B': sectionB,
+      };
+
+      // Answers & selected answers
+      _answers[subject] = {
+        'A': List.filled(sectionA.length, null),
+        'B': List.filled(sectionB.length, null),
+      };
+
+      _selectedAnswers[subject] = {
+        'A': List.filled(sectionA.length, null),
+        'B': List.filled(sectionB.length, null),
+      };
+
+      _sectionBSelected[subject] = <int>{};
+
+      // ========= NEW: persistent controllers for Section B =========
+      _sectionBControllers[subject] = {};
+      for (int i = 0; i < sectionB.length; i++) {
+        final saved = _selectedAnswers[subject]!['B']![i] ?? '';
+        _sectionBControllers[subject]!['B_$i'] =
+            TextEditingController(text: saved);
+      }
+
+      debugPrint(
+          '[$subject] Section A=${sectionA.length}, Section B=${sectionB.length}');
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
     _startTimer();
-  } catch (e, stackTrace) {
+  } catch (e) {
     setState(() {
       _isLoading = false;
-      _errorMessage = 'Error: $e';
+      _errorMessage = e.toString();
     });
   }
 }
@@ -202,11 +224,13 @@ Future<void> _fetchQuestionsFromSupabase() async {
       _currentQuestionIndex = index;
       if (_answers[_currentSubject]![_currentSection]![index] != null) {
         String savedAnswer =
-            _answers[_currentSubject]![_currentSection]![index]!.userAnswer ?? '';
+            _answers[_currentSubject]![_currentSection]![index]!.userAnswer ??
+                '';
         _selectedAnswers[_currentSubject]![_currentSection]![index] =
             savedAnswer.isNotEmpty ? savedAnswer : null;
         _isMarkedForReview =
-            _answers[_currentSubject]![_currentSection]![index]!.isMarkedForReview;
+            _answers[_currentSubject]![_currentSection]![index]!
+                .isMarkedForReview;
         if (_currentSection == 'B') {
           _userAnswer = savedAnswer;
         }
@@ -220,9 +244,11 @@ Future<void> _fetchQuestionsFromSupabase() async {
 
   void _nextQuestion() {
     final currentQuestions = _questions[_currentSubject]![_currentSection]!;
-    String? selectedButNotSaved =
-        _selectedAnswers[_currentSubject]![_currentSection]![_currentQuestionIndex];
-    bool isSaved = _answers[_currentSubject]![_currentSection]![_currentQuestionIndex] != null;
+    String? selectedButNotSaved = _selectedAnswers[_currentSubject]![
+        _currentSection]![_currentQuestionIndex];
+    bool isSaved =
+        _answers[_currentSubject]![_currentSection]![_currentQuestionIndex] !=
+            null;
 
     if (selectedButNotSaved != null && !isSaved) {
       showDialog(
@@ -280,39 +306,75 @@ Future<void> _fetchQuestionsFromSupabase() async {
     });
   }
 
-void _toggleMarkForReview() {
-  setState(() {
-    _isMarkedForReview = !_isMarkedForReview;
-    // This part ensures answer object always exists if marked for review
-    if (_answers[_currentSubject]![_currentSection]![_currentQuestionIndex] == null) {
-      _answers[_currentSubject]![_currentSection]![_currentQuestionIndex] = QuestionAnswer(
-        questionId: _currentQuestionIndex,
-        subject: _currentSubject,
-        section: _currentSection,
-        userAnswer: '', // No answer
-        isMarkedForReview: _isMarkedForReview,
-        marksObtained: 0,
-        answeredAt: null,
-      );
-    } else {
-      _answers[_currentSubject]![_currentSection]![_currentQuestionIndex]!
-          .isMarkedForReview = _isMarkedForReview;
-    }
-  });
-}
-
+  void _toggleMarkForReview() {
+    setState(() {
+      _isMarkedForReview = !_isMarkedForReview;
+      // This part ensures answer object always exists if marked for review
+      if (_answers[_currentSubject]![_currentSection]![_currentQuestionIndex] ==
+          null) {
+        _answers[_currentSubject]![_currentSection]![_currentQuestionIndex] =
+            QuestionAnswer(
+          questionId: _currentQuestionIndex,
+          subject: _currentSubject,
+          section: _currentSection,
+          userAnswer: '', // No answer
+          isMarkedForReview: _isMarkedForReview,
+          marksObtained: 0,
+          answeredAt: null,
+        );
+      } else {
+        _answers[_currentSubject]![_currentSection]![_currentQuestionIndex]!
+            .isMarkedForReview = _isMarkedForReview;
+      }
+    });
+  }
 
 void _saveCurrentAnswer() {
   String? selectedAnswer;
+
   if (_currentSection == 'A') {
-    selectedAnswer = _selectedAnswers[_currentSubject]![_currentSection]![_currentQuestionIndex];
+    selectedAnswer = _selectedAnswers[_currentSubject]![_currentSection]![
+        _currentQuestionIndex];
   } else {
+    // SECTION B: integer type answer from _userAnswer
     selectedAnswer = _userAnswer.isNotEmpty ? _userAnswer : null;
+
+    if (selectedAnswer != null && selectedAnswer!.isNotEmpty) {
+      // ---- Section B: max 5 attempted questions per subject ----
+      final currentList = _selectedAnswers[_currentSubject]!['B']!;
+      final nonEmptyCount =
+          currentList.where((e) => e != null && e!.isNotEmpty).length;
+
+      final wasEmptyBefore = (currentList[_currentQuestionIndex] == null ||
+          currentList[_currentQuestionIndex]!.isEmpty);
+
+      // ye question pehle empty tha, aur ye 6th attempt ban raha hai -> block
+      if (wasEmptyBefore && nonEmptyCount >= 5) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'You can attempt only 5 questions in Section B per subject.',
+            ),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return; // save mat karo
+      }
+    }
   }
-  if (selectedAnswer == null || selectedAnswer.isEmpty) {
-    // Simply return without showing any notification
+
+  // Agar answer hi nahi (MCQ me koi option select nahi / INT empty) -> not attempted
+  if (selectedAnswer == null || selectedAnswer!.isEmpty) {
+    setState(() {
+      _answers[_currentSubject]![_currentSection]![_currentQuestionIndex] =
+          null;
+      _selectedAnswers[_currentSubject]![_currentSection]![
+          _currentQuestionIndex] = null;
+    });
     return;
   }
+
+  // Yahan tak aaya: A ya B me valid answer hai => save
   final answerObj = QuestionAnswer(
     questionId: _currentQuestionIndex,
     subject: _currentSubject,
@@ -323,10 +385,16 @@ void _saveCurrentAnswer() {
     marksObtained: 0,
     answeredAt: DateTime.now(),
   );
+
   setState(() {
-    _answers[_currentSubject]![_currentSection]![_currentQuestionIndex] = answerObj;
+    _answers[_currentSubject]![_currentSection]![_currentQuestionIndex] =
+        answerObj;
+    _selectedAnswers[_currentSubject]![_currentSection]![
+        _currentQuestionIndex] = selectedAnswer;
   });
 }
+
+
   void _selectIntegerQuestion(int index) {
     final selected = _sectionBSelected[_currentSubject]!;
     if (selected.length < 5 || selected.contains(index)) {
@@ -349,7 +417,8 @@ void _saveCurrentAnswer() {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('⏰ Time Up!'),
-        content: const Text('Your test time has ended. Submitting automatically...'),
+        content:
+            const Text('Your test time has ended. Submitting automatically...'),
         actions: [],
       ),
     );
@@ -362,7 +431,8 @@ void _saveCurrentAnswer() {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('✅ Submit Test?'),
-        content: const Text('Are you sure you want to submit the test and exit?'),
+        content:
+            const Text('Are you sure you want to submit the test and exit?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -379,101 +449,114 @@ void _saveCurrentAnswer() {
       ),
     );
   }
-  Future<void> _submitMockTest() async {
-    _timerRunning = false;
 
-    // Subject-wise analytics (JEE +4, -1)
-    int physicsScore = 0, chemistryScore = 0, mathsScore = 0;
-    int physicsCorrect = 0, chemistryCorrect = 0, mathsCorrect = 0;
-    int physicsWrong = 0, chemistryWrong = 0, mathsWrong = 0;
-    int physicsUnattempted = 0, chemistryUnattempted = 0, mathsUnattempted = 0;
+Future<void> _submitMockTest() async {
+  _timerRunning = false;
 
-    int totalCorrect = 0, totalWrong = 0, totalUnattempted = 0, totalAttempted = 0;
+  // Subject-wise analytics (JEE +4, -1)
+  int physicsScore = 0, chemistryScore = 0, mathsScore = 0;
+  int physicsCorrect = 0, chemistryCorrect = 0, mathsCorrect = 0;
+  int physicsWrong = 0, chemistryWrong = 0, mathsWrong = 0;
+  int physicsUnattempted = 0, chemistryUnattempted = 0, mathsUnattempted = 0;
 
-    for (final subject in _subjects) {
-      int correct = 0, wrong = 0, unattempted = 0;
-      List<String> sections = ['A', 'B'];
-      for (final section in sections) {
-        final answers = _answers[subject]![section]!;
-        final questions = _questions[subject]![section]!;
-        for (int i = 0; i < answers.length && i < questions.length; i++) {
-          final ans = answers[i];
-          final correctAns = (questions[i].correctAnswer?.trim() ?? "");
-          final userAns = ans?.userAnswer?.trim() ?? "";
-          if (userAns.isEmpty) {
-            unattempted++;
-          } else if (userAns == correctAns) {
-            correct++;
-          } else {
-            wrong++;
-          }
+  int totalCorrect = 0, totalWrong = 0, totalUnattempted = 0, totalAttempted = 0;
+
+  for (final subject in _subjects) {
+    int correct = 0, wrong = 0, unattempted = 0;
+    List<String> sections = ['A', 'B'];
+
+    for (final section in sections) {
+      final answers = _answers[subject]![section]!;
+      final questions = _questions[subject]![section]!;
+
+      for (int i = 0; i < answers.length && i < questions.length; i++) {
+        final ans = answers[i];
+        final correctAns = (questions[i].correctAnswer?.trim() ?? '');
+        final userAns = ans?.userAnswer?.trim() ?? '';
+
+        if (userAns.isEmpty) {
+          unattempted++;
+        } else if (userAns == correctAns) {
+          correct++;
+        } else {
+          wrong++;
         }
       }
-      int score = (correct * 4) - wrong;
-      if (subject == "Physics") {
-        physicsScore = score;
-        physicsCorrect = correct;
-        physicsWrong = wrong;
-        physicsUnattempted = unattempted;
-      } else if (subject == "Chemistry") {
-        chemistryScore = score;
-        chemistryCorrect = correct;
-        chemistryWrong = wrong;
-        chemistryUnattempted = unattempted;
-      } else if (subject == "Maths") {
-        mathsScore = score;
-        mathsCorrect = correct;
-        mathsWrong = wrong;
-        mathsUnattempted = unattempted;
-      }
-      totalCorrect += correct;
-      totalWrong += wrong;
-      totalUnattempted += unattempted;
-      totalAttempted += correct + wrong;
     }
 
-    int totalScore = physicsScore + chemistryScore + mathsScore;
+    // JEE Mains marking: +4 for correct, -1 for wrong
+    int score = (correct * 4) - wrong;
 
-    setState(() {
-      _testSubmitted = true;
-    });
+    if (subject == 'Physics') {
+      physicsScore = score;
+      physicsCorrect = correct;
+      physicsWrong = wrong;
+      physicsUnattempted = unattempted;
+    } else if (subject == 'Chemistry') {
+      chemistryScore = score;
+      chemistryCorrect = correct;
+      chemistryWrong = wrong;
+      chemistryUnattempted = unattempted;
+    } else if (subject == 'Mathematics') {
+      mathsScore = score;
+      mathsCorrect = correct;
+      mathsWrong = wrong;
+      mathsUnattempted = unattempted;
+    }
 
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MockTestResultScreen(
-            result: MockTestResult(
-              id: 0,
-              userId: _currentUserId ?? 'unknown',
-              testId: 'mock_2025_jee_main',
-              totalScore: totalScore,
-              physicsScore: physicsScore,
-              chemistryScore: chemistryScore,
-              mathsScore: mathsScore,
-              physicsCorrect: physicsCorrect,
-              physicsWrong: physicsWrong,
-              physicsUnattempted: physicsUnattempted,
-              chemistryCorrect: chemistryCorrect,
-              chemistryWrong: chemistryWrong,
-              chemistryUnattempted: chemistryUnattempted,
-              mathsCorrect: mathsCorrect,
-              mathsWrong: mathsWrong,
-              mathsUnattempted: mathsUnattempted,
-              totalQuestionsAttempted: totalAttempted,
-              totalCorrect: totalCorrect,
-              totalWrong: totalWrong,
-              totalUnattempted: totalUnattempted,
-              timeSpentSeconds:
-                  DateTime.now().difference(_testStartTime).inSeconds,
-              submittedAt: DateTime.now(),
-              percentile: null,
-            ),
+    totalCorrect += correct;
+    totalWrong += wrong;
+    totalUnattempted += unattempted; // subject totals ke लिए
+    totalAttempted += correct + wrong;
+  }
+
+  // Overall stats: fixed 75 questions
+  totalUnattempted = 75 - totalAttempted;
+
+  int totalScore = physicsScore + chemistryScore + mathsScore;
+
+
+  setState(() {
+    _testSubmitted = true;
+  });
+
+  if (mounted) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MockTestResultScreen(
+          result: MockTestResult(
+            id: 0,
+            userId: _currentUserId ?? 'unknown',
+            testId: 'mock_2025_jee_main',
+            totalScore: totalScore,
+            physicsScore: physicsScore,
+            chemistryScore: chemistryScore,
+            mathsScore: mathsScore,
+            physicsCorrect: physicsCorrect,
+            physicsWrong: physicsWrong,
+            physicsUnattempted: physicsUnattempted,
+            chemistryCorrect: chemistryCorrect,
+            chemistryWrong: chemistryWrong,
+            chemistryUnattempted: chemistryUnattempted,
+            mathsCorrect: mathsCorrect,
+            mathsWrong: mathsWrong,
+            mathsUnattempted: mathsUnattempted,
+            totalQuestionsAttempted: totalAttempted,
+            totalCorrect: totalCorrect,
+            totalWrong: totalWrong,
+            totalUnattempted: totalUnattempted,
+            timeSpentSeconds:
+                DateTime.now().difference(_testStartTime).inSeconds,
+            submittedAt: DateTime.now(),
+            percentile: null,
           ),
         ),
-      );
-    }
+      ),
+    );
   }
+}
+
   // ========== UI ==========
 
   @override
@@ -551,18 +634,22 @@ void _saveCurrentAnswer() {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('$_currentSubject - Section $_currentSection',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
               Row(
                 children: [
                   Icon(Icons.timer,
-                      color: _timeRemainingSeconds < 600 ? Colors.red : Colors.white),
+                      color: _timeRemainingSeconds < 600
+                          ? Colors.red
+                          : Colors.white),
                   const SizedBox(width: 8),
                   Text(
                     _formatTime(_timeRemainingSeconds),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color:
-                          _timeRemainingSeconds < 600 ? Colors.red : Colors.white,
+                      color: _timeRemainingSeconds < 600
+                          ? Colors.red
+                          : Colors.white,
                     ),
                   ),
                 ],
@@ -584,8 +671,8 @@ void _saveCurrentAnswer() {
                     onTap: () => _switchSubject(subject),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 16),
                       decoration: BoxDecoration(
                         color: isSelected ? Colors.orange : Colors.transparent,
                         borderRadius: BorderRadius.circular(20),
@@ -597,9 +684,8 @@ void _saveCurrentAnswer() {
                         subject,
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.grey,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     ),
@@ -623,7 +709,8 @@ void _saveCurrentAnswer() {
                         padding: const EdgeInsets.symmetric(
                             vertical: 6, horizontal: 20),
                         decoration: BoxDecoration(
-                          color: isSelected ? Colors.orange : Colors.transparent,
+                          color:
+                              isSelected ? Colors.orange : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: Colors.orange),
                         ),
@@ -653,15 +740,12 @@ void _saveCurrentAnswer() {
                     children: [
                       _buildQuestionDashboard(),
                       const SizedBox(height: 24),
-
                       _buildQuestionCard(currentQuestion),
                       const SizedBox(height: 20),
-
                       if (_currentSection == 'A')
                         _buildMCQOptions(currentQuestion)
                       else
                         _buildIntegerInput(currentQuestion),
-
                       const SizedBox(height: 24),
                       if (!_testSubmitted) _buildMarkForReviewCheckbox(),
                       const SizedBox(height: 10),
@@ -671,7 +755,8 @@ void _saveCurrentAnswer() {
               ),
             ),
 
-            if (!_testSubmitted) _buildBottomNavigationBar(currentQuestions.length),
+            if (!_testSubmitted)
+              _buildBottomNavigationBar(currentQuestions.length),
           ],
         ),
       ),
@@ -679,8 +764,11 @@ void _saveCurrentAnswer() {
   }
 
   Widget _buildQuestionDashboard() {
-    final questionCount = _currentSection == 'A' ? 20 : 10;
-    final attemptedCount = _getAttemptedCount();
+    final section = _currentSection;
+    final subject = _currentSubject;
+
+    final questions = _questions[subject]![section]!;
+    final totalQuestions = questions.length;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -692,15 +780,7 @@ void _saveCurrentAnswer() {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Attempted: $attemptedCount / $questionCount',
-            style: const TextStyle(
-              color: Colors.orange,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 12),
+          // Attempted text removed intentionally
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -709,19 +789,20 @@ void _saveCurrentAnswer() {
               crossAxisSpacing: 8,
               mainAxisSpacing: 10,
             ),
-            itemCount: questionCount,
+            itemCount: totalQuestions,
             itemBuilder: (context, index) {
-              Color tileColor = _getQuestionTileColor(index);
-              bool isCurrentQuestion = _currentQuestionIndex == index;
+              final isCurrent = _currentQuestionIndex == index;
+              final color = _getQuestionTileColor(index);
+
               return GestureDetector(
                 onTap: () => _goToQuestion(index),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: tileColor,
+                    color: color,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isCurrentQuestion ? Colors.yellow : Colors.transparent,
-                      width: isCurrentQuestion ? 3 : 1,
+                      color: isCurrent ? Colors.yellow : Colors.transparent,
+                      width: isCurrent ? 3 : 1,
                     ),
                   ),
                   alignment: Alignment.center,
@@ -730,7 +811,6 @@ void _saveCurrentAnswer() {
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
                     ),
                   ),
                 ),
@@ -742,200 +822,219 @@ void _saveCurrentAnswer() {
     );
   }
 
-Widget _buildQuestionCard(Question question) {
-  final text = question.questionText; // DB se raw, sirf \n mapping _buildLatexText karega
+  Widget _buildQuestionCard(Question question) {
+    final text = question
+        .questionText; // DB se raw, sirf \n mapping _buildLatexText karega
 
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: const Color(0xFF1E1E1E),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.white12),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Q${_currentQuestionIndex + 1}',
-              style: const TextStyle(
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Q${_currentQuestionIndex + 1}',
+                style: const TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              Text(
+                '${question.examYear} | ${question.examShift}',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildLatexText(text, fontSize: 16, color: Colors.white),
+          if (question.questionImageUrl != null &&
+              question.questionImageUrl!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Image.network(
+                question.questionImageUrl!,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.broken_image, color: Colors.white24),
               ),
             ),
-            Text(
-              '${question.examYear} | ${question.examShift}',
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 11,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMCQOptions(Question question) {
+    final options = question.optionsList ?? {};
+    if (options.isEmpty) return const SizedBox.shrink();
+
+    String? selected = _selectedAnswers[_currentSubject]![_currentSection]![
+        _currentQuestionIndex];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        const Text(
+          'Select your answer:',
+          style: TextStyle(
+            color: Color(0xFFE57C23),
+            fontWeight: FontWeight.bold,
+            fontSize: 17,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...options.entries.map((entry) {
+          final optionKey = entry.key;
+          final optionValue = entry.value.trim();
+          final isImage = optionValue.startsWith('http') &&
+              (optionValue.endsWith('.png') ||
+                  optionValue.endsWith('.jpg') ||
+                  optionValue.endsWith('.jpeg'));
+          final isSelected = selected == optionKey;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  // Agar already selected hai to deselect (null)
+                  if (_selectedAnswers[_currentSubject]![_currentSection]![
+                          _currentQuestionIndex] ==
+                      optionKey) {
+                    _selectedAnswers[_currentSubject]![_currentSection]![
+                        _currentQuestionIndex] = null;
+                  } else {
+                    _selectedAnswers[_currentSubject]![_currentSection]![
+                        _currentQuestionIndex] = optionKey;
+                  }
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF32291A)
+                      : const Color(0xFF1E1E1E),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color:
+                        isSelected ? const Color(0xFFE57C23) : Colors.white12,
+                    width: isSelected ? 2 : 1.2,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '($optionKey) ',
+                      style: const TextStyle(
+                        color: Color(0xFFE57C23),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                    ),
+                    Expanded(
+                      child: isImage
+                          ? Image.network(
+                              optionValue,
+                              height: 70,
+                              width: 110,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.broken_image,
+                                color: Colors.white24,
+                                size: 32,
+                              ),
+                            )
+                          : _buildLatexText(
+                              optionValue,
+                              fontSize: 17,
+                              color: Colors.white,
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+Widget _buildIntegerInput(Question question) {
+  final subject = _currentSubject;
+  final idx = _currentQuestionIndex;
+
+  // Persistent controller per question
+  _sectionBControllers[subject] ??= {};
+  _sectionBControllers[subject]!['B_$idx'] ??=
+      TextEditingController(
+        text: _selectedAnswers[subject]!['B']![idx] ?? '',
+      );
+
+  final controller = _sectionBControllers[subject]!['B_$idx']!;
+
+  return Column(
+    children: [
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Row(
+          children: [
+            const Text(
+              'Answer: ',
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+                style: const TextStyle(
+                  color: Colors.yellow,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'Enter integer',
+                  hintStyle: TextStyle(color: Colors.white30),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _userAnswer = value.trim(); // sirf buffer
+                  });
+                },
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        _buildLatexText(text, fontSize: 16, color: Colors.white),
-        if (question.questionImageUrl != null &&
-            question.questionImageUrl!.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Image.network(
-              question.questionImageUrl!,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.broken_image, color: Colors.white24),
-            ),
-          ),
-      ],
-    ),
-  );
-}
-
-
-
-Widget _buildMCQOptions(Question question) {
-  final options = question.optionsList ?? {};
-  if (options.isEmpty) return const SizedBox.shrink();
-
-  String? selected = _selectedAnswers[_currentSubject]![_currentSection]![_currentQuestionIndex];
-
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SizedBox(height: 20),
-      const Text(
-        'Select your answer:',
-        style: TextStyle(
-          color: Color(0xFFE57C23),
-          fontWeight: FontWeight.bold,
-          fontSize: 17,
-        ),
       ),
-      const SizedBox(height: 16),
-      ...options.entries.map((entry) {
-        final optionKey = entry.key;
-        final optionValue = entry.value.trim();
-        final isImage = optionValue.startsWith('http') &&
-            (optionValue.endsWith('.png') ||
-                optionValue.endsWith('.jpg') ||
-                optionValue.endsWith('.jpeg'));
-        final isSelected = selected == optionKey;
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedAnswers[_currentSubject]![_currentSection]![_currentQuestionIndex] = optionKey;
-              });
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF32291A)
-                    : const Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isSelected
-                      ? const Color(0xFFE57C23)
-                      : Colors.white12,
-                  width: isSelected ? 2 : 1.2,
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '(${optionKey}) ',
-                    style: const TextStyle(
-                      color: Color(0xFFE57C23),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 17,
-                    ),
-                  ),
-                  Expanded(
-                    child: isImage
-                        ? Image.network(
-                            optionValue,
-                            height: 70,
-                            width: 110,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.broken_image,
-                              color: Colors.white24,
-                              size: 32,
-                            ),
-                          )
-                        : _buildLatexText(
-                            optionValue,
-                            fontSize: 17,
-                            color: Colors.white,
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }),
     ],
   );
 }
 
 
-
-
-
-
-
-
-  Widget _buildIntegerInput(Question question) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: Row(
-            children: [
-              const Text('Answer: ',
-                  style: TextStyle(color: Colors.white70, fontSize: 16)),
-              Expanded(
-                child: TextField(
-                  controller: TextEditingController(text: _userAnswer),
-                  onChanged: (value) {
-                    setState(() {
-                      _userAnswer = value;
-                      _selectedAnswers[_currentSubject]![_currentSection]![_currentQuestionIndex] = value;
-                    });
-                  },
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(
-                    color: Colors.yellow,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Enter integer',
-                    hintStyle: const TextStyle(color: Colors.white30),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildMarkForReviewCheckbox() {
     return Row(
@@ -962,135 +1061,137 @@ Widget _buildMCQOptions(Question question) {
     );
   }
 
-Widget _buildBottomNavigationBar(int totalQuestions) {
-  final isLastQuestion = _currentQuestionIndex == totalQuestions - 1;
-  final isFirstQuestion = _currentQuestionIndex == 0;
-  
-  // ✅ Check if current position is LAST question of Mathematics Section B
-  final isFinalQuestion = _currentSubject == 'Mathematics' && 
-                          _currentSection == 'B' && 
-                          isLastQuestion;
+  Widget _buildBottomNavigationBar(int totalQuestions) {
+    final isLastQuestion = _currentQuestionIndex == totalQuestions - 1;
+    final isFirstQuestion = _currentQuestionIndex == 0;
 
-  TextStyle labelStyle = const TextStyle(
-    fontSize: 15,
-    fontWeight: FontWeight.w600,
-    color: Colors.white,
-    overflow: TextOverflow.ellipsis,
-  );
+    // ✅ Check if current position is LAST question of Mathematics Section B
+    final isFinalQuestion = _currentSubject == 'Mathematics' &&
+        _currentSection == 'B' &&
+        isLastQuestion;
 
-  return SafeArea(
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        border: const Border(top: BorderSide(color: Colors.white12)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: !isFirstQuestion ? _previousQuestion : null,
-              icon: const Icon(Icons.arrow_back, size: 20),
-              label: FittedBox(
-                child: Text('Previous', maxLines: 1, style: labelStyle),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[800],
-                disabledBackgroundColor: Colors.grey[900],
-                minimumSize: const Size(0, 52),
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _toggleMarkForReview,
-              icon: Icon(
-                _isMarkedForReview ? Icons.bookmark : Icons.bookmark_border,
-                size: 20,
-              ),
-              label: FittedBox(
-                child: Text('Mark', maxLines: 1, style: labelStyle),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                minimumSize: const Size(0, 52),
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () {
-                _saveCurrentAnswer();
+    TextStyle labelStyle = const TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      color: Colors.white,
+      overflow: TextOverflow.ellipsis,
+    );
 
-                // ✅ If it's the final question (Math Section B last), submit test
-                if (isFinalQuestion) {
-                  _showSubmitDialog();
-                  return;
-                }
-
-                // ✅ Otherwise, follow the navigation pattern
-                final isLastSectionA = 
-                    (_currentSection == 'A') && (isLastQuestion);
-                final isLastSectionB = 
-                    (_currentSection == 'B') && (isLastQuestion);
-
-                if (_currentSection == 'A' && !isLastQuestion) {
-                  // Not last in Section A, go to next question
-                  _nextQuestion();
-                } else if (isLastSectionA) {
-                  // Last of Section A → Go to Section B, first question (same subject)
-                  _switchSection('B');
-                  _goToQuestion(0);
-                } else if (_currentSection == 'B' && !isLastQuestion) {
-                  // Not last in Section B, go to next question
-                  _nextQuestion();
-                } else if (isLastSectionB) {
-                  // Last of Section B → Go to next subject, Section A, first question
-                  int currentSubjectIndex = _subjects.indexOf(_currentSubject);
-                  int nextSubjectIndex = (currentSubjectIndex + 1) % _subjects.length;
-                  _switchSubject(_subjects[nextSubjectIndex]);
-                  _switchSection('A');
-                  _goToQuestion(0);
-                }
-              },
-              icon: Icon(
-                isFinalQuestion ? Icons.check_circle : Icons.save,
-                size: 20,
-              ),
-              label: FittedBox(
-                child: Text(
-                  isFinalQuestion ? 'Submit' : 'Save & Next',
-                  maxLines: 1,
-                  style: labelStyle,
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          border: const Border(top: BorderSide(color: Colors.white12)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: !isFirstQuestion ? _previousQuestion : null,
+                icon: const Icon(Icons.arrow_back, size: 20),
+                label: FittedBox(
+                  child: Text('Previous', maxLines: 1, style: labelStyle),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[800],
+                  disabledBackgroundColor: Colors.grey[900],
+                  minimumSize: const Size(0, 52),
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
                 ),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isFinalQuestion ? Colors.red : Colors.green,
-                minimumSize: const Size(0, 52),
-                padding: const EdgeInsets.symmetric(horizontal: 2),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _toggleMarkForReview,
+                icon: Icon(
+                  _isMarkedForReview ? Icons.bookmark : Icons.bookmark_border,
+                  size: 20,
+                ),
+                label: FittedBox(
+                  child: Text('Mark', maxLines: 1, style: labelStyle),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  minimumSize: const Size(0, 52),
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  _saveCurrentAnswer();
 
-Color _getQuestionTileColor(int index) {
-  final answer = _answers[_currentSubject]![_currentSection]![index];
-  if (answer != null && answer.isMarkedForReview) {
-    return Colors.purple;
+                  // ✅ If it's the final question (Math Section B last), submit test
+                  if (isFinalQuestion) {
+                    _showSubmitDialog();
+                    return;
+                  }
+
+                  // ✅ Otherwise, follow the navigation pattern
+                  final isLastSectionA =
+                      (_currentSection == 'A') && (isLastQuestion);
+                  final isLastSectionB =
+                      (_currentSection == 'B') && (isLastQuestion);
+
+                  if (_currentSection == 'A' && !isLastQuestion) {
+                    // Not last in Section A, go to next question
+                    _nextQuestion();
+                  } else if (isLastSectionA) {
+                    // Last of Section A → Go to Section B, first question (same subject)
+                    _switchSection('B');
+                    _goToQuestion(0);
+                  } else if (_currentSection == 'B' && !isLastQuestion) {
+                    // Not last in Section B, go to next question
+                    _nextQuestion();
+                  } else if (isLastSectionB) {
+                    // Last of Section B → Go to next subject, Section A, first question
+                    int currentSubjectIndex =
+                        _subjects.indexOf(_currentSubject);
+                    int nextSubjectIndex =
+                        (currentSubjectIndex + 1) % _subjects.length;
+                    _switchSubject(_subjects[nextSubjectIndex]);
+                    _switchSection('A');
+                    _goToQuestion(0);
+                  }
+                },
+                icon: Icon(
+                  isFinalQuestion ? Icons.check_circle : Icons.save,
+                  size: 20,
+                ),
+                label: FittedBox(
+                  child: Text(
+                    isFinalQuestion ? 'Submit' : 'Save & Next',
+                    maxLines: 1,
+                    style: labelStyle,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isFinalQuestion ? Colors.red : Colors.green,
+                  minimumSize: const Size(0, 52),
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-  if (answer != null && answer.isAnswered) {
-    return Colors.green;
+
+  Color _getQuestionTileColor(int index) {
+    final answer = _answers[_currentSubject]![_currentSection]![index];
+    if (answer != null && answer.isMarkedForReview) {
+      return Colors.purple;
+    }
+    if (answer != null && answer.isAnswered) {
+      return Colors.green;
+    }
+    return Colors.grey[700]!;
   }
-  return Colors.grey[700]!;
-}
 
   int _getAttemptedCount() {
     int count = 0;
@@ -1101,117 +1202,114 @@ Color _getQuestionTileColor(int index) {
     return count;
   }
 
-Widget _buildLatexText(
-  String text, {
-  double fontSize = 16,
-  Color color = Colors.white,
-}) {
-  if (text.isEmpty) {
-    return Text('', style: TextStyle(fontSize: fontSize, color: color));
-  }
+  Widget _buildLatexText(
+    String text, {
+    double fontSize = 16,
+    Color color = Colors.white,
+  }) {
+    if (text.isEmpty) {
+      return Text('', style: TextStyle(fontSize: fontSize, color: color));
+    }
 
-  // Sirf literal "\n" ko newline banao
-  text = text.replaceAll(r'\n', '\n');
+    // Sirf literal "\n" ko newline banao
+    text = text.replaceAll(r'\n', '\n');
 
-  final spans = <InlineSpan>[];
-  int index = 0;
+    final spans = <InlineSpan>[];
+    int index = 0;
 
-  final blockMathRegex = RegExp(r'\$\$(.+?)\$\$', dotAll: true);
-  final blockMatches = blockMathRegex.allMatches(text).toList();
-  final blockPositions = <int>[];
-  for (final m in blockMatches) {
-    blockPositions.add(m.start);
-    blockPositions.add(m.end);
-  }
-
-  final inlineRegex = RegExp(r'\$(.+?)\$', dotAll: true);
-
-  while (index < text.length) {
-    // block math check
-    bool isBlock = false;
+    final blockMathRegex = RegExp(r'\$\$(.+?)\$\$', dotAll: true);
+    final blockMatches = blockMathRegex.allMatches(text).toList();
+    final blockPositions = <int>[];
     for (final m in blockMatches) {
-      if (index == m.start) {
-        isBlock = true;
-        var mathContent = m.group(1)!.trim();
-        mathContent = mathContent.replaceAll('\\\\', '\\');
-        spans.add(
-          WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Math.tex(
-                mathContent,
-                textStyle: TextStyle(fontSize: fontSize + 2, color: color),
+      blockPositions.add(m.start);
+      blockPositions.add(m.end);
+    }
+
+    final inlineRegex = RegExp(r'\$(.+?)\$', dotAll: true);
+
+    while (index < text.length) {
+      // block math check
+      bool isBlock = false;
+      for (final m in blockMatches) {
+        if (index == m.start) {
+          isBlock = true;
+          var mathContent = m.group(1)!.trim();
+          mathContent = mathContent.replaceAll('\\\\', '\\');
+          spans.add(
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Math.tex(
+                  mathContent,
+                  textStyle: TextStyle(fontSize: fontSize + 2, color: color),
+                ),
               ),
             ),
+          );
+          index = m.end;
+          break;
+        }
+      }
+      if (isBlock) continue;
+
+      final match = inlineRegex.firstMatch(text.substring(index));
+      if (match == null) {
+        spans.add(
+          TextSpan(
+            text: text.substring(index),
+            style: TextStyle(fontSize: fontSize, color: color),
           ),
         );
-        index = m.end;
         break;
       }
-    }
-    if (isBlock) continue;
 
-    final match = inlineRegex.firstMatch(text.substring(index));
-    if (match == null) {
-      spans.add(
-        TextSpan(
-          text: text.substring(index),
-          style: TextStyle(fontSize: fontSize, color: color),
-        ),
-      );
-      break;
-    }
+      final start = index + match.start;
+      final end = index + match.end;
 
-    final start = index + match.start;
-    final end = index + match.end;
-
-    if (start > index) {
-      spans.add(
-        TextSpan(
-          text: text.substring(index, start),
-          style: TextStyle(fontSize: fontSize, color: color),
-        ),
-      );
-    }
-
-    bool skipDollar = false;
-    for (final pos in blockPositions) {
-      if (start == pos || start == pos - 1) {
-        skipDollar = true;
-        break;
+      if (start > index) {
+        spans.add(
+          TextSpan(
+            text: text.substring(index, start),
+            style: TextStyle(fontSize: fontSize, color: color),
+          ),
+        );
       }
-    }
-    if (skipDollar) {
-      index = start + 1;
-      continue;
-    }
 
-    var mathContent = match.group(1)!.trim();
-    mathContent = mathContent.replaceAll('\\\\', '\\');
+      bool skipDollar = false;
+      for (final pos in blockPositions) {
+        if (start == pos || start == pos - 1) {
+          skipDollar = true;
+          break;
+        }
+      }
+      if (skipDollar) {
+        index = start + 1;
+        continue;
+      }
 
-    spans.add(
-      WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: Math.tex(
-          mathContent,
-          textStyle: TextStyle(fontSize: fontSize, color: color),
+      var mathContent = match.group(1)!.trim();
+      mathContent = mathContent.replaceAll('\\\\', '\\');
+
+      spans.add(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Math.tex(
+            mathContent,
+            textStyle: TextStyle(fontSize: fontSize, color: color),
+          ),
         ),
-      ),
+      );
+
+      index = end;
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+      softWrap: true,
+      overflow: TextOverflow.visible,
     );
-
-    index = end;
   }
-
-  return RichText(
-    text: TextSpan(children: spans),
-    softWrap: true,
-    overflow: TextOverflow.visible,
-  );
-}
-
-
-
 }
 
 class QuestionAnswer {

@@ -695,66 +695,32 @@ Widget build(BuildContext context) {
 Widget _buildFilterRow(BuildContext context) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-    child: Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              prefixIcon: Icon(Icons.search, color: Color(0xFFE57C23)),
-              hintText: 'Search chapter...',
-              filled: true,
-              fillColor: Theme.of(context).cardColor,
-              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.white12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.orange),
-              ),
-            ),
-            style: const TextStyle(color: Colors.white),
-            onChanged: (query) {
-              setState(() => _searchQuery = query.trim().toLowerCase());
-            },
-          ),
+    child: TextField(
+      controller: _searchController,
+      decoration: InputDecoration(
+        prefixIcon: const Icon(Icons.search, color: Color(0xFFE57C23)),
+        hintText: 'Search chapter...',
+        filled: true,
+        fillColor: Theme.of(context).cardColor,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.white12),
         ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedYear,
-              dropdownColor: Theme.of(context).cardColor,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              icon: const Icon(Icons.arrow_drop_down, color: Color(0xFFE57C23)),
-              items: _availableYears.map((String year) {
-                return DropdownMenuItem<String>(
-                  value: year,
-                  child: Text(year),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  setState(() {
-                    _selectedYear = newValue;
-                  });
-                }
-              },
-            ),
-          ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.orange),
         ),
-      ],
+      ),
+      style: const TextStyle(color: Colors.white),
+      onChanged: (query) {
+        setState(() => _searchQuery = query.trim().toLowerCase());
+      },
     ),
   );
 }
+
 
 
   Widget _buildFilterButton(BuildContext context, String label, IconData icon) {
