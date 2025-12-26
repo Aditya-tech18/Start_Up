@@ -102,51 +102,73 @@ Future<void> _handleForgotPassword() async {
     _isLoading = true;
   });
 
-  final response = await Supabase.instance.client.functions.invoke(
-    'otp_generator',
-    body: {'email': email},
-  );
+  try {
+    final response = await Supabase.instance.client.functions.invoke(
+      'otp_generator',
+      body: {
+        'email': email,
+        'purpose': 'forgot',  // ✅ ADD THIS
+      },
+    );
 
-  final raw = response.data;
-  final Map<String, dynamic> resData =
-      raw is String ? jsonDecode(raw) : raw as Map<String, dynamic>;
+    final raw = response.data;
+    final Map<String, dynamic> resData =
+        raw is String ? jsonDecode(raw) : raw as Map<String, dynamic>;
 
-  if (response.status == 200 && resData['success'] == true) {
-    if (resData['user_exists'] == true) {
-if (mounted) {  // ✅ ADD THIS
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('✅ OTP sent to your email!'), backgroundColor: Colors.green),
-  );
-}
+    if (response.status == 200 && resData['success'] == true) {
+      if (resData['user_exists'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ OTP sent to your email!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
 
-
-      Navigator.of(context).pushNamed(
-        '/otp_verification',
-        arguments: {
-          'email': email,
-          'flow': 'forgot',
-        },
+        Navigator.of(context).pushNamed(
+          '/otp_verification',
+          arguments: {
+            'email': email,
+            'flow': 'forgot',
+          },
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Email not registered. Please sign up first.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${resData['message'] ?? 'Could not send OTP'}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
-} else {
-  if (mounted) {  // ✅ ADD THIS
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Error: Could not send OTP'), backgroundColor: Colors.red),
-    );
+    }
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
-}
-
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Error: Could not send OTP'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  setState(() {
-    _isLoading = false;
-  });
 }
 
 
@@ -172,47 +194,71 @@ Future<void> _handleAuth() async {
   try {
     final auth = Supabase.instance.client.auth;
 
-    if (_isSignUp) {
-      // STEP 1: Send OTP to the user's email before signup
-final response = await Supabase.instance.client.functions.invoke(
-  'otp_generator',
-  body: {'email': email},
-);
+if (_isSignUp) {
+  // STEP 1: Send OTP to the user's email before signup
+  try {
+    final response = await Supabase.instance.client.functions.invoke(
+      'otp_generator',
+      body: {
+        'email': email,
+        'purpose': 'signup',  // ✅ ADD THIS
+      },
+    );
 
-final raw = response.data;
-final Map<String, dynamic> resData =
-    raw is String ? jsonDecode(raw) : raw as Map<String, dynamic>;
+    final raw = response.data;
+    final Map<String, dynamic> resData =
+        raw is String ? jsonDecode(raw) : raw as Map<String, dynamic>;
 
-
-      if (response.status == 200 && resData['success'] == true) {
-if (mounted) {  // ✅ ADD THIS
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('✅ OTP sent! Please verify OTP.'), backgroundColor: Colors.green),
-  );
-}
-
-        // Navigate to OTP Verification Screen, pass email and password
-Navigator.of(context).pushNamed(
-  '/otp_verification',
-  arguments: {
-    'email': email,
-    'password': password,
-    'flow': 'signup',  // ✅ isse OTP screen ko pata rahega ye signup waala step hai
-  },
-);
-
-      } else {
+    if (response.status == 200 && resData['success'] == true) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: Could not send OTP')),
+          const SnackBar(
+            content: Text('✅ OTP sent! Please verify OTP.'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
 
-      setState(() {
-        _isLoading = false;
-      });
-      return; // Exit as signup is pending OTP verification
-
+      // Navigate to OTP Verification Screen, pass email and password
+      Navigator.of(context).pushNamed(
+        '/otp_verification',
+        arguments: {
+          'email': email,
+          'password': password,
+          'flow': 'signup',  // ✅ Already there - good
+        },
+      );
     } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${resData['message'] ?? 'Could not send OTP'}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+    return; // Exit as signup is pending OTP verification
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    setState(() {
+      _isLoading = false;
+    });
+    return;
+  }
+} else {
+
       // Login
       final res = await auth.signInWithPassword(
         email: email,

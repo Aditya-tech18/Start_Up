@@ -49,7 +49,6 @@ if (args is String) {
 
 
 Future<void> _verifyOtp() async {
-  // ✅ CHANGE #1: EARLY VALIDATION (BEFORE loading state)
   final otp = _otpController.text.trim();
   if (otp.isEmpty) {
     setState(() => _errorMsg = "Please enter OTP.");
@@ -62,13 +61,11 @@ Future<void> _verifyOtp() async {
     return;
   }
 
-  // ✅ CHANGE #2: PASSWORD CHECK FOR SIGNUP (CRITICAL FIX)
   if (_flow == 'signup' && (password == null || password!.isEmpty)) {
     setState(() => _errorMsg = "Password missing for signup. Please restart.");
     return;
   }
 
-  // ✅ NOW set loading state
   setState(() {
     _errorMsg = "";
     _isVerifying = true;
@@ -78,10 +75,13 @@ Future<void> _verifyOtp() async {
     final client = Supabase.instance.client;
     final res = await client.functions.invoke(
       'verify_otp',
-      body: {'email': currentEmail, 'otp': otp},
+      body: {
+        'email': currentEmail,
+        'otp': otp,
+        'purpose': _flow,  // ✅ ADD THIS LINE
+      },
     );
 
-    // ✅ CHANGE #3: SAFE STATUS CHECK
     final status = res.status ?? 500;
     if (status != 200) {
       setState(() {
@@ -90,6 +90,7 @@ Future<void> _verifyOtp() async {
       });
       return;
     }
+
 
     // ✅ CHANGE #4: SAFE RESPONSE PARSING
     final Map<String, dynamic> body;
@@ -145,44 +146,56 @@ Future<void> _verifyOtp() async {
 
 
 
-Future<void> _completeSignup(String email, String password) async {
-  try {
-    final client = Supabase.instance.client;
-    
-    if (password.length < 6) {
-      setState(() {
-        _errorMsg = "Password must be at least 6 characters.";
-        _isVerifying = false;
-      });
-      return;
-    }
+  /// Completes signup AFTER OTP verification and then navigates to home.
+  Future<void> _completeSignup(String email, String password) async {
+    try {
+      final client = Supabase.instance.client;
 
-    final authResponse = await client.auth.signUp(
-      email: email,
-      password: password,  // ✅ SAFE
-    );
+      if (password.length < 6) {
+        setState(() {
+          _errorMsg = "Password must be at least 6 characters.";
+          _isVerifying = false;
+        });
+        return;
+      }
 
-    if (authResponse.user != null && mounted) {
+      // Create auth user
+      final authResponse = await client.auth.signUp(
+        email: email,
+        password: password,
+      );
+
+      if (authResponse.user == null) {
+        setState(() {
+          _errorMsg = "Failed to create account. Please try again.";
+          _isVerifying = false;
+        });
+        return;
+      }
+
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('✅ Account created successfully!'),
           backgroundColor: Colors.green,
         ),
       );
+
+      // Navigate directly to home screen
       Navigator.of(context).pushReplacementNamed('/home');
+    } on AuthException catch (authError) {
+      setState(() {
+        _errorMsg = 'Signup error: ${authError.message}';
+        _isVerifying = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMsg = "Signup failed: $e";
+        _isVerifying = false;
+      });
     }
-  } on AuthException catch (authError) {
-    setState(() {
-      _errorMsg = 'Signup error: ${authError.message}';
-      _isVerifying = false;
-    });
-  } catch (e) {
-    setState(() {
-      _errorMsg = "Signup failed: $e";
-      _isVerifying = false;
-    });
   }
-}
 
 
   @override

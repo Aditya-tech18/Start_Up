@@ -1,19 +1,19 @@
-// supabase/functions/otp_generator/index.ts
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-// Tip: API key ko env variable me rakh sakta hai, abhi hard-coded rakha hai tumhare example ke hisaab se.
 const RESEND_API_KEY = "re_M6xchEB9_NQ7B6rzuWFpjcb2aoZhdVFbP";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 serve(async (req: Request) => {
   try {
-    // 1) Request se email lo
-    const { email } = await req.json();
+    const { email, purpose } = await req.json() as {
+      email?: string;
+      purpose?: string;
+    };
+
     if (!email) {
       return new Response(
         JSON.stringify({ success: false, message: "Email required" }),
@@ -25,10 +25,13 @@ serve(async (req: Request) => {
     }
 
     const normalizedEmail = (email as string).toLowerCase();
+    const flowPurpose = (purpose === "signup" || purpose === "forgot")
+      ? purpose
+      : "forgot"; // default
 
-    // 2) Check: public.users table me email exist karta hai ya nahi
+    // Check: public.users table me email exist karta hai ya nahi
     const { data: userRow, error: userErr } = await supabase
-      .from("users") // ✅ tumhara actual table jisme email column hai
+      .from("users")
       .select("id")
       .eq("email", normalizedEmail)
       .maybeSingle();
@@ -44,8 +47,9 @@ serve(async (req: Request) => {
       );
     }
 
-    if (!userRow) {
-      // Email registered hi nahi hai
+    // Agar signup purpose hai to check mat karo user exists ya nahi
+    // Agar forgot purpose hai to user must exist
+    if (flowPurpose === "forgot" && !userRow) {
       return new Response(
         JSON.stringify({ success: true, user_exists: false }),
         {
@@ -55,17 +59,17 @@ serve(async (req: Request) => {
       );
     }
 
-    // 3) Email exists → OTP generate karo
+    // OTP generate karo
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // 4) OTP ko password_reset_otps table me insert karo
+    // OTP ko password_reset_otps table me insert karo
     const { error: insertErr } = await supabase
       .from("password_reset_otps")
       .insert({
         email: normalizedEmail,
         otp_code: otp,
         used: false,
-        // 5 min expiry
+        purpose: flowPurpose,
         expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       });
 
@@ -80,7 +84,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // 5) Resend API se email bhejo
+    // Resend API se email bhejo
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -88,7 +92,7 @@ serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "onboarding@resend.dev", // dev/test ke liye OK
+        from: "noreply@prepixo.info",
         to: [normalizedEmail],
         subject: "Your OTP Code",
         html: `<p>Your OTP is: <b>${otp}</b></p>`,
@@ -107,9 +111,8 @@ serve(async (req: Request) => {
       );
     }
 
-    // 6) Flutter ko simple JSON
     return new Response(
-      JSON.stringify({ success: true, user_exists: true }),
+      JSON.stringify({ success: true, user_exists: userRow ? true : false }),
       {
         status: 200,
         headers: { "content-type": "application/json" },
